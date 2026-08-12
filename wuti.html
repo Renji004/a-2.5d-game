@@ -1,0 +1,2537 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>无题 - 像素生存</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: #0d1117;
+    font-family: 'Courier New', Consolas, monospace;
+    color: #e8eef8;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  #game { position: fixed; inset: 0; display: block; cursor: crosshair; }
+
+  .overlay {
+    position: fixed; inset: 0; z-index: 10;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(6, 9, 15, 0.78);
+  }
+  .hidden { display: none !important; }
+
+  h1.title {
+    font-size: 58px; margin: 0 0 8px; letter-spacing: 14px; color: #ffe98a;
+    text-shadow: 4px 4px 0 #000, 0 0 24px rgba(255, 233, 138, .35);
+  }
+  .subtitle { color: #8fa3bf; margin-bottom: 30px; letter-spacing: 3px; font-size: 14px; }
+
+  .btn {
+    font: inherit; font-size: 17px; font-weight: bold; letter-spacing: 4px; color: #fff;
+    background: #26324d; border: 3px solid #0a0e16; padding: 11px 30px; margin: 7px;
+    cursor: pointer; box-shadow: 0 4px 0 #0a0e16; min-width: 220px;
+  }
+  .btn:hover { background: #3a4a72; }
+  .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #0a0e16; }
+  .btn.danger { background: #5c2430; }
+  .btn.danger:hover { background: #7c3040; }
+
+  .panel {
+    background: rgba(17, 23, 36, .96); border: 3px solid #0a0e16; box-shadow: 8px 8px 0 rgba(0,0,0,.45);
+    padding: 26px 32px; width: min(560px, 92vw); max-height: 86vh; overflow: auto;
+  }
+  .panel h2 { margin: 0 0 16px; color: #ffe98a; letter-spacing: 6px; font-size: 22px; text-align: center; }
+  .setting-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 11px 0; }
+  .setting-row label { color: #cfe0ff; font-size: 14px; flex: 1; }
+  .setting-row .val { color: #ffe98a; font-size: 13px; min-width: 52px; text-align: right; }
+  input[type="range"] { width: 170px; accent-color: #ffe98a; }
+  select { background: #101725; color: #e8eef8; border: 2px solid #0a0e16; padding: 5px 8px; font: inherit; }
+  input[type="checkbox"] { width: 18px; height: 18px; accent-color: #ffe98a; }
+  .file-row { display: flex; align-items: center; justify-content: space-between; margin: 7px 0; gap: 10px; }
+  .file-row span { font-size: 13px; color: #9fb0c8; flex: 1; }
+  .file-row input[type="file"] { font-size: 12px; color: #cfe0ff; width: 220px; }
+  .hint { color: #7d8fa8; font-size: 12px; margin-top: 8px; line-height: 1.7; }
+  .about-list { font-size: 14px; line-height: 2; color: #d8e4f4; }
+  .about-list b { color: #ffe98a; }
+
+  #death h2 { font-size: 46px; margin: 0 0 14px; color: #ff5a5a; letter-spacing: 8px; text-shadow: 3px 3px 0 #000; }
+  #deathStats { color: #9fb0c8; font-size: 15px; margin-bottom: 24px; letter-spacing: 2px; }
+  #pause h2 { font-size: 26px; margin: 0 0 14px; color: #ffe98a; letter-spacing: 8px; }
+  #pause .panel { width: min(430px, 92vw); }
+  .pause-stats { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 0 0 16px; }
+  .pause-stats .chip { background: rgba(10,14,24,.85); border: 2px solid #26324d; padding: 5px 10px; font-size: 12px; color: #cfe0ff; }
+  .pause-stats .chip b { color: #ffe98a; }
+  .btn.primary { background: #2f5d3a; }
+  .btn.primary:hover { background: #3d7a4c; }
+  .btn.full { width: 100%; }
+  .pause-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+  .pause-grid .btn { min-width: 0; margin: 0; padding: 10px 8px; font-size: 15px; }
+
+  .ach-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; margin: 6px 0; background: rgba(10,14,24,.7); border: 2px solid #26324d; font-size: 13px; }
+  .ach-item.got { border-color: #ffe98a; background: rgba(60,50,20,.45); }
+  .ach-icon { font-size: 20px; width: 28px; text-align: center; }
+  .ach-name { color: #ffe98a; font-weight: bold; min-width: 90px; }
+  .ach-desc { color: #9fb0c8; flex: 1; }
+  .ach-prog { color: #7d8fa8; min-width: 70px; text-align: right; font-size: 12px; }
+  .ach-item.got .ach-prog { color: #5eff8a; }
+
+  #toast {
+    position: fixed; bottom: 44px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,.85); border: 2px solid #ffe98a; color: #ffe98a;
+    padding: 8px 18px; font-size: 14px; z-index: 30; opacity: 0; transition: opacity .25s;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="toast"></div>
+
+<!-- 主菜单 -->
+<div id="menu" class="overlay">
+  <h1 class="title">无题</h1>
+  <div class="subtitle">PIXEL · ISOMETRIC · SURVIVAL</div>
+  <button class="btn" id="btnContinue" style="display:none;">▶ 继续游戏</button>
+  <button class="btn" id="btnStart">▶ 开始游戏</button>
+  <button class="btn" id="btnSettings">设 置</button>
+  <button class="btn" id="btnAchieve">🏆 成 就</button>
+  <button class="btn" id="btnAbout">关 于</button>
+</div>
+
+<!-- 设置 -->
+<div id="settings" class="overlay hidden">
+  <div class="panel">
+    <h2>设 置</h2>
+    <div class="setting-row"><label>音量</label><input type="range" id="setVolume" min="0" max="100" value="70"><span class="val" id="valVolume">70</span></div>
+    <div class="setting-row"><label>昼夜速度（1-10，1≈120秒/轮，越大越快）</label><input type="range" id="setDay" min="1" max="10" value="1"><span class="val" id="valDay">1</span></div>
+    <div class="setting-row"><label>玩家射速（发/秒）</label><input type="range" id="setRate" min="3" max="5" step="0.1" value="3"><span class="val" id="valRate">3.0</span></div>
+    <div class="setting-row"><label>世界大小（下次开局生效）</label>
+      <select id="setWorld">
+        <option value="无限" selected>无限（区块加载/卸载）</option>
+        <option value="小(256)">小 256×256</option>
+        <option value="中(512)">中 512×512</option>
+        <option value="大(1024)">大 1024×1024</option>
+      </select>
+    </div>
+    <div class="setting-row"><label>难度（下次开局生效）</label>
+      <select id="setDiff">
+        <option value="简单">简单</option>
+        <option value="普通" selected>普通</option>
+        <option value="困难">困难</option>
+        <option value="地狱">地狱</option>
+      </select>
+    </div>
+    <div class="setting-row"><label>怪物数量（5-50）</label><input type="range" id="setMCount" min="5" max="50" value="16"><span class="val" id="valMCount">16</span></div>
+    <div class="setting-row"><label>怪物血量倍率</label><input type="range" id="setMHp" min="0.5" max="3" step="0.1" value="1"><span class="val" id="valMHp">1.0</span></div>
+    <div class="setting-row"><label>怪物伤害倍率</label><input type="range" id="setMDmg" min="0.5" max="3" step="0.1" value="1"><span class="val" id="valMDmg">1.0</span></div>
+    <div class="setting-row"><label>怪物速度倍率</label><input type="range" id="setMSpd" min="0.5" max="2" step="0.1" value="1"><span class="val" id="valMSpd">1.0</span></div>
+    <div class="setting-row"><label>怪物刷新方式（下次开局生效）</label>
+      <select id="setSpawn">
+        <option value="immediate" selected>开局生成</option>
+        <option value="night">仅夜晚刷新</option>
+      </select>
+    </div>
+    <div class="setting-row"><label>玩家生命上限（50-300）</label><input type="range" id="setMaxHp" min="50" max="300" step="10" value="100"><span class="val" id="valMaxHp">100</span></div>
+    <div class="setting-row"><label>玩家移速倍率（0.5-2）</label><input type="range" id="setPSpd" min="0.5" max="2" step="0.05" value="1"><span class="val" id="valPSpd">1.00</span></div>
+    <div class="setting-row"><label>近战伤害（10-50）</label><input type="range" id="setMeleeDmg" min="10" max="50" step="1" value="20"><span class="val" id="valMeleeDmg">20</span></div>
+    <div class="setting-row"><label>近战冷却（0.3-1.2秒）</label><input type="range" id="setMeleeCd" min="0.3" max="1.2" step="0.05" value="0.6"><span class="val" id="valMeleeCd">0.60</span></div>
+    <div class="setting-row"><label>近战吸血（伤害的 0-60%）</label><input type="range" id="setLifesteal" min="0" max="60" step="5" value="0"><span class="val" id="valLifesteal">0%</span></div>
+    <div class="setting-row"><label>攻击友好生物回血（每次 +0-30）</label><input type="range" id="setFHeal" min="0" max="30" step="1" value="5"><span class="val" id="valFHeal">5</span></div>
+    <div class="setting-row"><label>友好生物刷新间隔（2-15秒，越小越多）</label><input type="range" id="setFSpawn" min="2" max="15" step="1" value="3"><span class="val" id="valFSpawn">3</span></div>
+    <div class="setting-row"><label>自动存档间隔（5-120秒）</label><input type="range" id="setSaveT" min="5" max="120" step="5" value="10"><span class="val" id="valSaveT">10</span></div>
+    <div class="setting-row"><label>怪物刷新间隔（2-15秒，越小刷得越快）</label><input type="range" id="setMSpawn" min="2" max="15" step="1" value="4"><span class="val" id="valMSpawn">4</span></div>
+    <div class="setting-row"><label>小地图显示</label><input type="checkbox" id="setMinimap" checked></div>
+    <div class="setting-row"><label>屏幕震动</label><input type="checkbox" id="setShake" checked></div>
+    <div class="setting-row"><label>伤害飘字</label><input type="checkbox" id="setDmgTxt" checked></div>
+    <hr style="border-color:#26324d; margin:14px 0;">
+    <div style="color:#ffe98a; font-size:14px; margin-bottom:6px;">性能优化（越低越流畅）</div>
+    <div class="setting-row"><label>渲染分辨率（0.5-1）</label><input type="range" id="setRes" min="0.5" max="1" step="0.05" value="1"><span class="val" id="valRes">1.00</span></div>
+    <div class="setting-row"><label>区块加载半径（1-3，越小越流畅）</label><input type="range" id="setCR" min="1" max="3" step="1" value="2"><span class="val" id="valCR">2</span></div>
+    <div class="setting-row"><label>粒子特效（0-100%）</label><input type="range" id="setParticles" min="0" max="100" step="5" value="100"><span class="val" id="valParticles">100%</span></div>
+    <div class="setting-row"><label>水面波纹动画</label><input type="checkbox" id="setWaves" checked></div>
+    <div class="setting-row"><label>像素锐利渲染（关闭图片平滑）</label><input type="checkbox" id="setPixel" checked></div>
+    <hr style="border-color:#26324d; margin:14px 0;">
+    <div style="color:#ffe98a; font-size:14px; margin-bottom:6px;">自定义角色图片（上传后立即生效）</div>
+    <div class="file-row"><span>玩家 → a.png</span><input type="file" id="filePlayer" accept="image/png,image/*"></div>
+    <div class="file-row"><span>敌人1 盾兵 → 1.png</span><input type="file" id="fileE1" accept="image/png,image/*"></div>
+    <div class="file-row"><span>敌人2 近战兵 → 2.png</span><input type="file" id="fileE2" accept="image/png,image/*"></div>
+    <div class="file-row"><span>敌人3 治疗兵 → 3.png</span><input type="file" id="fileE3" accept="image/png,image/*"></div>
+    <div class="file-row"><span>敌人4 远程兵 → 4.png</span><input type="file" id="fileE4" accept="image/png,image/*"></div>
+    <div style="text-align:center; margin-top:16px;"><button class="btn" id="btnSettingsBack">返 回</button></div>
+  </div>
+</div>
+
+<!-- 关于 -->
+<div id="about" class="overlay hidden">
+  <div class="panel">
+    <h2>关 于</h2>
+    <div class="about-list">
+      <b>操作</b><br>
+      🖱 左键点击地面：移动（自动寻路，虚线显示路径）<br>
+      🖱 右键：取消移动目标<br>
+      Ctrl：切换 远程 / 近战 攻击模式<br>
+      空格：近战模式下主动攻击<br>
+      ESC：打开暂停菜单（设置 / 成就 / 存档）<br><br>
+      <b>玩法</b><br>
+      · 远程模式自动瞄准 350 内最近敌人（每次消耗 8 能量）<br>
+      · 近战模式：范围伤害（伤害/冷却/吸血可调），攻击友好生物可回血<br>
+      · 生命 100 / 护盾 40（优先吸收）/ 能量 100（每秒回复 8）<br>
+      · 敌人：盾兵、近战兵、治疗兵、远程兵（各有 AI）<br>
+      · 水域可直行（仅减速），石地不可通行<br>
+      · 昼夜循环：夜晚视野变暗，可设置夜晚刷新怪物<br>
+      · 友好生物：鸡、羊、牛、猪、兔、鸭、鹿、狐、松鼠、猫在白天按刷新间隔补充（设置可调），靠近会逃跑，近战攻击可回血，夜晚回家休息<br>
+      · 怪物与友好生物只在视野内不断刷新（怪物速度受难度影响，间隔均可调）<br>
+      · 存档机制：自动存档（间隔可设），按 ESC 暂停时立即存档；主菜单可“继续游戏”<br>
+      · <b>无限世界</b>：Perlin 噪声按区块（32×32 格）动态生成/卸载，走到哪生成到哪（参考 Minecraft）<br>
+      · 设置：世界大小、难度、怪物数量/血量/伤害/速度、刷新方式<br>
+      · 成就系统：击杀、存活天数、探索距离等 15 项成就（自动保存）<br>
+      · 小地图（右下）显示周围地形与敌人；HUD 显示天数与坐标<br>
+      · 可在“设置”中上传 a.png / 1~4.png 替换角色形象
+    </div>
+    <div style="text-align:center; margin-top:18px;"><button class="btn" id="btnAboutBack">返 回</button></div>
+  </div>
+</div>
+
+<!-- 死亡 -->
+<div id="death" class="overlay hidden">
+  <h2>💀 你死了</h2>
+  <div id="deathStats"></div>
+  <button class="btn" id="btnRespawn">重新开始</button>
+  <button class="btn" id="btnToMenu">返回主菜单</button>
+</div>
+
+<!-- 暂停 -->
+<div id="pause" class="overlay hidden">
+  <div class="panel">
+    <h2>⏸ 暂 停</h2>
+    <div class="pause-stats">
+      <span class="chip">第 <b id="psDay">1</b> 天</span>
+      <span class="chip">时段 <b id="psPhase">白天</b></span>
+      <span class="chip">击杀 <b id="psKills">0</b></span>
+      <span class="chip">生命 <b id="psHp">100</b></span>
+    </div>
+    <button class="btn primary full" id="btnResume">▶ 继 续 游 戏</button>
+    <div class="pause-grid">
+      <button class="btn" id="btnPauseSettings">⚙ 设置</button>
+      <button class="btn" id="btnPauseAchieve">🏆 成就</button>
+      <button class="btn" id="btnPauseHelp">🎓 操作说明</button>
+      <button class="btn" id="btnPauseSave">💾 手动存档</button>
+    </div>
+    <button class="btn danger full" id="btnPauseMenu">保存并返回主菜单</button>
+    <div class="hint" style="text-align:center;">按 ESC 继续 · 自动存档进行中</div>
+  </div>
+</div>
+
+<!-- 操作指南（首次进入 / 暂停菜单可打开） -->
+<div id="tutorial" class="overlay hidden">
+  <div class="panel" style="width:min(600px,94vw);">
+    <h2>🎓 操作指南</h2>
+    <div class="about-list">
+      <b>鼠标操作</b><br>
+      🖱 左键点击地面：移动（自动寻路，虚线显示路径）<br>
+      🖱 右键：取消移动目标<br><br>
+      <b>键盘操作</b><br>
+      Ctrl：切换 远程 / 近战 攻击模式<br>
+      空格：近战攻击<br>
+      ESC：暂停菜单（设置 / 成就 / 存档）<br><br>
+      <b>生存小贴士</b><br>
+      · 远程模式自动瞄准敌人（消耗能量）；近战模式无消耗、范围伤害<br>
+      · 近战攻击友好生物可以回血（绿色 + 数字）<br>
+      · 白天友好生物（鸡羊牛猪兔鸭鹿狐松鼠猫）出没；夜晚视野变暗、敌人增多<br>
+      · 怪物与友好生物只在视野内不断刷新；游戏自动存档，按 ESC 可随时保存
+    </div>
+    <label style="display:block; text-align:center; margin-top:14px; font-size:13px; color:#cfe0ff; cursor:pointer;">
+      <input type="checkbox" id="tutNoMore" style="accent-color:#5eff8a; margin-right:4px;">了解啦，下次开局不再显示
+    </label>
+    <div style="text-align:center; margin-top:14px;">
+      <button class="btn" id="btnTutorialStart">开始冒险 ▶</button>
+    </div>
+  </div>
+</div>
+
+<!-- 成就 -->
+<div id="achieve" class="overlay hidden">
+  <div class="panel" style="width:min(640px,94vw);">
+    <h2>🏆 成 就</h2>
+    <div id="achieveModeNote" class="hint" style="text-align:center; margin:0 0 10px;"></div>
+    <div id="achieveList"></div>
+    <div style="text-align:center; margin-top:16px;">
+      <button class="btn danger" id="btnResetStats" style="min-width:170px;font-size:14px;">重置统计数据</button>
+      <button class="btn" id="btnAchieveBack">返 回</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ============================================================
+   无题 —— 2.5D 等距像素生存游戏（单文件原型）
+   ============================================================ */
+
+// ---------- 基础常量 ----------
+const CELL = 16;                 // 逻辑格像素
+const TILE_W = 28, TILE_H = 14;  // 等距渲染菱形尺寸
+const HALF_W = 14, HALF_H = 7;
+const CHUNK = 32;                // 区块边长（格），区块 = 32×32 格 = 512×512 像素
+// 地形类型（数字枚举）
+const TS = { GRASS:0, FOREST:1, HILL:2, SAND:3, WATER:4, STONE:5, VOID:6 };
+const T_COLORS = ['#4a8a4a','#2f6b3a','#9aa84f','#e0d29a','#3a7bd5','#8a8a92','#14161d'];
+const WORLD_SIZES = { '无限':0, '小(256)':256, '中(512)':512, '大(1024)':1024 };
+// 固定噪声阈值（无限世界无法全局排序，用固定值保证各区域比例稳定）
+const TH_WATER = -0.29, TH_SAND = -0.21, TH_GRASS = 0.01, TH_FOREST = 0.14, TH_HILL = 0.32;
+const PLAYER_SPEED = 100; // 全员移速下调，且任何敌人速度都不超过玩家
+
+// ---------- 设置 ----------
+const settings = {
+  volume: 70, dayNightSpeed: 1, fireRate: 3.0,
+  worldSize: '无限', difficulty: '普通',
+  monsterCount: 16, monsterHp: 1, monsterDmg: 1, monsterSpeed: 1,
+  spawnNight: false,
+  playerMaxHp: 100, playerSpeed: 1, meleeDmg: 20, meleeCd: 0.6,
+  lifesteal: 0, friendlyHeal: 5, friendlySpawnInterval: 3, saveInterval: 10,
+  minimap: true, shake: true, dmgTxt: true,
+  renderScale: 1, chunkRadius: 2, monsterSpawnInterval: 4, particles: 100, waterWaves: true,
+  pixel: false, images: { player:null, '1':null, '2':null, '3':null, '4':null }
+};
+// 难度倍率（血量 / 伤害 / 速度 / 数量 / 刷新间隔倍率：越低刷得越快）
+const DIFF = {
+  '简单': { hp:0.7, dmg:0.7, speed:0.85, count:0.7, spawn:1.7 },
+  '普通': { hp:1, dmg:1, speed:1, count:1, spawn:1.0 },
+  '困难': { hp:1.5, dmg:1.4, speed:1.1, count:1.4, spawn:0.6 },
+  '地狱': { hp:2.2, dmg:2, speed:1.2, count:2, spawn:0.4 }
+};
+let diffMul = DIFF['普通'];
+function refreshDiff(){ diffMul = DIFF[settings.difficulty] || DIFF['普通']; }
+function loadSettings(){
+  try {
+    const s = JSON.parse(localStorage.getItem('wuti_settings') || '{}');
+    for (const k in s) if (k !== 'images') settings[k] = s[k];
+  } catch(e){}
+}
+function saveSettings(){
+  try {
+    const s = {}; for (const k in settings) if (k !== 'images') s[k] = settings[k];
+    localStorage.setItem('wuti_settings', JSON.stringify(s));
+  } catch(e){}
+}
+loadSettings();
+
+// ---------- 工具 ----------
+function mulberry32(seed){
+  let a = seed >>> 0;
+  return function(){
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function hash2(i, j){ return ((i * 73856093) ^ (j * 19349663)) >>> 0; }
+
+// 2D Perlin 噪声
+function makeNoise(seed){
+  const rand = mulberry32(seed);
+  const perm = new Uint8Array(512);
+  const p = new Uint8Array(256);
+  for (let i = 0; i < 256; i++) p[i] = i;
+  for (let i = 255; i > 0; i--){ const j = Math.floor(rand() * (i + 1)); const t = p[i]; p[i] = p[j]; p[j] = t; }
+  for (let i = 0; i < 512; i++) perm[i] = p[i & 255];
+  const fade = t => t * t * t * (t * (t * 6 - 15) + 10);
+  const lerp = (a, b, t) => a + t * (b - a);
+  const grad = (h, x, y) => {
+    switch (h & 7){
+      case 0: return  x + y; case 1: return -x + y; case 2: return  x - y; case 3: return -x - y;
+      case 4: return  x;    case 5: return -x;       case 6: return  y;    default: return -y;
+    }
+  };
+  return function noise2(x, y){
+    const X = Math.floor(x) & 255, Y = Math.floor(y) & 255;
+    x -= Math.floor(x); y -= Math.floor(y);
+    const u = fade(x), v = fade(y);
+    const A = perm[X] + Y, B = perm[X + 1] + Y;
+    const aa = perm[A], ab = perm[A + 1], ba = perm[B], bb = perm[B + 1];
+    return lerp(
+      lerp(grad(aa, x, y), grad(ba, x - 1, y), u),
+      lerp(grad(ab, x, y - 1), grad(bb, x - 1, y - 1), u),
+      v
+    );
+  };
+}
+const noiseH = makeNoise(20260811);
+const noiseM = makeNoise(97431);
+
+// ---------- 无限世界（区块加载 / 卸载，参考 Minecraft） ----------
+let worldLimit = 0;                  // 0 = 无限；否则 N×N 有限世界
+const chunks = new Map();            // "cx,cy" → { cx, cy, data: Uint8Array(CHUNK*CHUNK) }
+const chunkCvs = new Map();          // "cx,cy" → { c, Sx, Sy } 整块地形离屏画布（性能优化）
+function noiseTile(i, j){
+  const h = noiseH(i * 0.032, j * 0.032);
+  const m = noiseM(i * 0.021 + 50, j * 0.021 + 50);
+  let t;
+  if (h < TH_WATER) t = TS.WATER;
+  else if (h < TH_SAND) t = TS.SAND;
+  else if (h < TH_GRASS) t = TS.GRASS;
+  else if (h < TH_FOREST) t = TS.FOREST;
+  else if (h < TH_HILL) t = TS.HILL;
+  else t = TS.STONE;
+  if (m > 0.55 && (t === TS.GRASS || t === TS.HILL)) t = TS.FOREST;
+  return t;
+}
+function ensureChunk(cx, cy){
+  const key = cx + ',' + cy;
+  if (chunks.has(key)) return;
+  const data = new Uint8Array(CHUNK * CHUNK);
+  const x0 = cx * CHUNK, y0 = cy * CHUNK;
+  for (let j = 0; j < CHUNK; j++){
+    for (let i = 0; i < CHUNK; i++){
+      data[j * CHUNK + i] = noiseTile(x0 + i, y0 + j);
+    }
+  }
+  chunks.set(key, { cx, cy, data });
+}
+function updateChunks(){
+  const pcx = Math.floor(player.x / CELL / CHUNK);
+  const pcy = Math.floor(player.y / CELL / CHUNK);
+  const R = Math.max(1, Math.min(3, Math.round(settings.chunkRadius || 2)));
+  for (let dx = -R; dx <= R; dx++){
+    for (let dy = -R; dy <= R; dy++){
+      ensureChunk(pcx + dx, pcy + dy);
+    }
+  }
+  // 卸载远处区块（超过加载半径 +1），同时清理对应画布
+  if (chunks.size > (2 * R + 1) * (2 * R + 1) + 16){
+    for (const [key, c] of chunks){
+      if (Math.abs(c.cx - pcx) > R + 1 || Math.abs(c.cy - pcy) > R + 1){
+        chunks.delete(key);
+        chunkCvs.delete(key);
+      }
+    }
+  }
+  // 清理玩家远处多余的离屏画布
+  for (const key of chunkCvs.keys()){
+    const p = key.indexOf(',');
+    const kx = +key.slice(0, p), ky = +key.slice(p + 1);
+    if (Math.abs(kx - pcx) > R + 1 || Math.abs(ky - pcy) > R + 1) chunkCvs.delete(key);
+  }
+}
+function tileType(i, j){
+  if (worldLimit > 0 && (i < 0 || j < 0 || i >= worldLimit || j >= worldLimit)) return TS.VOID;
+  const cx = i >> 5, cy = j >> 5;
+  const c = chunks.get(cx + ',' + cy);
+  if (c) return c.data[(j - (cy << 5)) * CHUNK + (i - (cx << 5))];
+  // 区块未加载：按噪声即时计算（确定性，与加载后一致）
+  return noiseTile(i, j);
+}
+function walkable(i, j){
+  const t = tileType(i, j);
+  return t !== TS.STONE && t !== TS.VOID;
+}
+function isWaterAt(i, j){ return tileType(i, j) === TS.WATER; }
+
+// ---------- 等距投影 ----------
+function toScreen(wx, wy){
+  const u = wx / CELL, v = wy / CELL;
+  return { x: (u - v) * HALF_W, y: (u + v) * HALF_H };
+}
+function toWorld(sx, sy){
+  const u = (sx / HALF_W + sy / HALF_H) / 2;
+  const v = (sy / HALF_H - sx / HALF_W) / 2;
+  return { x: u * CELL, y: v * CELL };
+}
+// 当前屏幕可见的世界范围（用屏幕四角计算等距菱形外接矩形）
+function viewBounds(){
+  const c = [
+    toWorld(camX, camY),
+    toWorld(camX + view.w, camY),
+    toWorld(camX, camY + view.h),
+    toWorld(camX + view.w, camY + view.h)
+  ];
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const p of c){
+    if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x;
+    if (p.y < y0) y0 = p.y; if (p.y > y1) y1 = p.y;
+  }
+  return { x0, y0, x1, y1 };
+}
+// 世界坐标是否落在当前屏幕内（含少量边距）
+function inView(wx, wy){
+  const s = toScreen(wx, wy);
+  const sx = s.x - camX, sy = s.y - camY;
+  return sx >= -20 && sx <= view.w + 20 && sy >= -20 && sy <= view.h + 20;
+}
+
+// ---------- 颜色工具 ----------
+function shade(hex, f){
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.min(255, Math.round(((n >> 16) & 255) * f));
+  const g = Math.min(255, Math.round(((n >> 8) & 255) * f));
+  const b = Math.min(255, Math.round((n & 255) * f));
+  return 'rgb(' + r + ',' + g + ',' + b + ')';
+}
+function rgba(hex, a){
+  const n = parseInt(hex.slice(1), 16);
+  return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+}
+
+// 小花装饰（茎 + 花冠 + 花心）
+function drawFlower(ctx, x, y, color){
+  ctx.fillStyle = '#2f6b3a';
+  ctx.fillRect(x, y, 1, 2);
+  ctx.fillStyle = color;
+  ctx.fillRect(x - 1, y - 1, 3, 2);
+  ctx.fillStyle = '#ffe98a';
+  ctx.fillRect(x, y - 1, 1, 1);
+}
+
+// ---------- 地形贴图（预渲染 4 个变体，装饰丰富：花/草丛/蘑菇/岩石/贝壳等） ----------
+const spriteCaches = {};
+function buildSprites(){
+  for (let type = 0; type <= TS.VOID; type++){
+    spriteCaches[type] = [];
+    for (let v = 0; v < 4; v++){
+      const c = document.createElement('canvas');
+      c.width = 36; c.height = 28;
+      drawTileSprite(c.getContext('2d'), type, v);
+      spriteCaches[type].push(c);
+    }
+  }
+  if (chunkCvs) chunkCvs.clear(); // 贴图重建后需重绘地形画布
+}
+function drawTileSprite(ctx, type, v){
+  const cx = 18, cy = 14;
+  const tint = [0.93, 1.0, 1.06, 1.09][v];
+  const base = T_COLORS[type];
+  let th = 3;
+  if (type === TS.STONE) th = 8;
+  else if (type === TS.HILL) th = 5;
+  else if (type === TS.WATER || type === TS.VOID) th = 0;
+  else if (type === TS.SAND) th = 2;
+
+  if (th > 0){
+    ctx.fillStyle = shade(base, tint * 0.55);
+    ctx.beginPath();
+    ctx.moveTo(cx - HALF_W, cy); ctx.lineTo(cx, cy + HALF_H);
+    ctx.lineTo(cx, cy + HALF_H + th); ctx.lineTo(cx - HALF_W, cy + th);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = shade(base, tint * 0.75);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + HALF_H); ctx.lineTo(cx + HALF_W, cy);
+    ctx.lineTo(cx + HALF_W, cy + th); ctx.lineTo(cx, cy + HALF_H + th);
+    ctx.closePath(); ctx.fill();
+  }
+
+  // 顶面
+  let topColor = shade(base, tint);
+  if (type === TS.STONE) topColor = shade('#b6b8c2', tint);
+  ctx.fillStyle = topColor;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - HALF_H); ctx.lineTo(cx + HALF_W, cy);
+  ctx.lineTo(cx, cy + HALF_H); ctx.lineTo(cx - HALF_W, cy);
+  ctx.closePath(); ctx.fill();
+
+  // 装饰（按变体分布花草、蘑菇、岩石、贝壳等，让世界更丰富）
+  if (type === TS.GRASS){
+    if (v === 0){ // 红花 + 草丛
+      drawFlower(ctx, cx - 6, cy - 2, '#ff6a6a');
+      ctx.fillStyle = shade('#2f6b3a', tint);
+      ctx.fillRect(cx + 4, cy - 3, 1, 3); ctx.fillRect(cx + 6, cy - 2, 1, 2);
+    } else if (v === 1){ // 白花
+      drawFlower(ctx, cx + 5, cy + 1, '#ffffff');
+      ctx.fillStyle = shade('#2f6b3a', tint);
+      ctx.fillRect(cx - 3, cy - 4, 1, 3);
+    } else if (v === 2){ // 草丛 + 小石块
+      ctx.fillStyle = shade('#2f6b3a', tint);
+      ctx.fillRect(cx - 5, cy - 2, 1, 3); ctx.fillRect(cx - 2, cy - 4, 1, 3);
+      ctx.fillRect(cx + 1, cy - 3, 1, 3); ctx.fillRect(cx + 4, cy - 1, 1, 2);
+      ctx.fillStyle = '#9aa0a8'; ctx.fillRect(cx + 6, cy, 2, 1);
+      ctx.fillStyle = '#7d838c'; ctx.fillRect(cx + 6, cy + 1, 1, 1);
+    } else { // 紫花 + 蓝花
+      drawFlower(ctx, cx - 4, cy + 1, '#c07ae8');
+      drawFlower(ctx, cx + 2, cy - 3, '#7ac8e8');
+      ctx.fillStyle = shade('#3d7d3d', tint);
+      ctx.fillRect(cx, cy - 2, 1, 2);
+    }
+  } else if (type === TS.FOREST){
+    const spots = [[-3, -3], [4, -2], [-6, 0]];
+    const n = v === 0 ? 1 : v === 1 ? 2 : 3;
+    for (let k = 0; k < n; k++){
+      const tx = cx + spots[k][0], ty = cy - 1 + spots[k][1];
+      ctx.fillStyle = '#5e4124'; ctx.fillRect(tx - 1, ty, 2, 4);
+      ctx.fillStyle = (v === 3 && k === 0) ? '#1c4a2c' : '#26593a';
+      ctx.fillRect(tx - 4, ty - 4, 8, 5);
+      ctx.fillRect(tx - 3, ty - 6, 6, 3);
+      ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.fillRect(tx - 1, ty - 6, 2, 1);
+    }
+    if (v === 3){ // 树 + 红蘑菇
+      ctx.fillStyle = '#e8e4da'; ctx.fillRect(cx + 7, cy - 1, 2, 3);
+      ctx.fillStyle = '#d94a4a'; ctx.fillRect(cx + 6, cy - 4, 4, 3);
+      ctx.fillStyle = '#fff'; ctx.fillRect(cx + 6, cy - 3, 1, 1);
+    } else if (v === 2){ // 树丛 + 灌木
+      ctx.fillStyle = shade('#3d7d3d', tint);
+      ctx.fillRect(cx - 8, cy + 1, 3, 2);
+      ctx.fillRect(cx - 8, cy, 1, 1);
+    }
+  } else if (type === TS.HILL){
+    if (v === 0){ // 岩石露头
+      ctx.fillStyle = '#b9b48a'; ctx.fillRect(cx - 5, cy - 2, 3, 2); ctx.fillRect(cx + 4, cy + 1, 2, 1);
+      ctx.fillStyle = '#8f8a66'; ctx.fillRect(cx - 5, cy - 1, 1, 1); ctx.fillRect(cx + 4, cy + 1, 1, 1);
+    } else if (v === 1){ // 枯草
+      ctx.fillStyle = shade('#b8a64f', tint);
+      ctx.fillRect(cx - 4, cy - 3, 1, 3); ctx.fillRect(cx + 3, cy - 2, 1, 3); ctx.fillRect(cx, cy - 4, 1, 3);
+    } else if (v === 2){ // 碎石堆
+      ctx.fillStyle = '#a8a88c'; ctx.fillRect(cx + 2, cy - 1, 4, 2);
+      ctx.fillStyle = '#8d8d72'; ctx.fillRect(cx + 2, cy, 1, 1); ctx.fillRect(cx + 5, cy, 1, 1);
+    } else { // 草丛 + 亮点
+      ctx.fillStyle = shade('#c3cc7d', tint);
+      ctx.fillRect(cx - 3, cy - 4, 1, 1); ctx.fillRect(cx + 5, cy - 3, 1, 1); ctx.fillRect(cx - 6, cy + 1, 1, 1);
+      ctx.fillStyle = shade('#9aa84f', tint); ctx.fillRect(cx + 1, cy - 2, 1, 1);
+    }
+  } else if (type === TS.SAND){
+    if (v === 0){ // 贝壳
+      ctx.fillStyle = '#f2ead2'; ctx.fillRect(cx - 4, cy - 2, 3, 2);
+      ctx.fillStyle = '#d8cba6'; ctx.fillRect(cx - 4, cy - 2, 3, 1);
+    } else if (v === 1){ // 沙波纹
+      ctx.strokeStyle = 'rgba(200,180,130,.6)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(cx - 6, cy - 1); ctx.lineTo(cx - 1, cy - 1); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx + 2, cy + 2); ctx.lineTo(cx + 7, cy + 2); ctx.stroke();
+    } else if (v === 2){ // 小石子
+      ctx.fillStyle = '#c9b877'; ctx.fillRect(cx + 3, cy - 3, 2, 1); ctx.fillRect(cx - 2, cy + 2, 2, 1);
+      ctx.fillStyle = '#b0a066'; ctx.fillRect(cx - 5, cy, 2, 1);
+    } else { // 小沙丘
+      ctx.fillStyle = 'rgba(255,255,255,.18)';
+      ctx.beginPath(); ctx.moveTo(cx - 3, cy + 2); ctx.lineTo(cx, cy - 1); ctx.lineTo(cx + 3, cy + 2);
+      ctx.closePath(); ctx.fill();
+    }
+  } else if (type === TS.STONE){
+    ctx.strokeStyle = 'rgba(255,255,255,.40)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cx - HALF_W, cy); ctx.lineTo(cx, cy - HALF_H); ctx.lineTo(cx + HALF_W, cy); ctx.stroke();
+    ctx.strokeStyle = 'rgba(0,0,0,.35)';
+    ctx.beginPath(); ctx.moveTo(cx - HALF_W, cy); ctx.lineTo(cx, cy + HALF_H); ctx.lineTo(cx + HALF_W, cy); ctx.stroke();
+    ctx.fillStyle = 'rgba(90,92,104,.55)';
+    ctx.fillRect(cx - 2, cy - 2, 4, 3);
+    ctx.fillRect(cx - 6, cy + 1, 3, 2); ctx.fillRect(cx + 3, cy, 3, 2);
+    ctx.fillStyle = 'rgba(255,255,255,.28)';
+    ctx.fillRect(cx - 1, cy - 5, 2, 1);
+    if (v === 1 || v === 2){ // 裂纹
+      ctx.strokeStyle = 'rgba(60,62,74,.7)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(cx - 3, cy - 4); ctx.lineTo(cx - 1, cy - 2); ctx.lineTo(cx - 3, cy); ctx.stroke();
+    }
+    if (v === 3){ // 亮斑
+      ctx.fillStyle = 'rgba(140,144,160,.6)'; ctx.fillRect(cx - 5, cy - 3, 2, 2);
+    }
+  } else if (type === TS.WATER){
+    ctx.fillStyle = 'rgba(255,255,255,.16)';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 6); ctx.lineTo(cx + 9, cy); ctx.lineTo(cx, cy + 6); ctx.lineTo(cx - 9, cy);
+    ctx.closePath(); ctx.fill();
+    if (v === 2){ // 额外水纹
+      ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(cx - 7, cy + 2); ctx.lineTo(cx - 2, cy + 2); ctx.stroke();
+    }
+  }
+}
+// 群系过渡强度（0 = 不过渡）：按地形类型对查表，值越大晕染越明显
+function blendAlpha(a, b){
+  const lo = Math.min(a, b), hi = Math.max(a, b);
+  const key = lo * 10 + hi;
+  switch (key){
+    case 34: return 0.36; // 沙-水（滩涂）
+    case 40: return 0.34; // 草-水（水岸）
+    case 14: return 0.32; // 森林-水
+    case 24: return 0.30; // 丘陵-水
+    case 3:  return 0.28; // 草-沙
+    case 1:  return 0.22; // 草-森林
+    case 2:  return 0.22; // 草-丘陵
+    case 13: return 0.20; // 沙-森林
+    case 23: return 0.20; // 沙-丘陵
+    // 石头边界保留硬边（山体陡峭感），弱过渡一律跳过
+    default: return 0;
+  }
+}
+function fillTri(pts, ox, oy, c){
+  c = c || ctx;
+  c.beginPath();
+  c.moveTo(ox + pts[0][0], oy + pts[0][1]);
+  c.lineTo(ox + pts[1][0], oy + pts[1][1]);
+  c.lineTo(ox + pts[2][0], oy + pts[2][1]);
+  c.closePath();
+  c.fill();
+}
+function drawTileSpriteAt(ctx, i, j, sx, sy){
+  const type = tileType(i, j);
+  if (type === TS.VOID) return;
+  const v = hash2(i, j) % 4;
+  ctx.drawImage(spriteCaches[type][v], sx - 18, sy - 14);
+  // 群系过渡：向 4 个方向把不同地形之间的硬边界柔化为渐晕
+  const dirs = [[1,0],[0,1],[-1,0],[0,-1]];
+  for (let d = 0; d < 4; d++){
+    const nt = tileType(i + dirs[d][0], j + dirs[d][1]);
+    if (nt === type || nt === TS.VOID) continue;
+    const alpha = blendAlpha(type, nt);
+    if (alpha <= 0) continue;
+    let t1, t2;
+    if (d === 0){ t1 = [[0,-3.5],[14,0],[0,3.5]]; t2 = [[0,-1.75],[14,0],[0,1.75]]; }
+    else if (d === 2){ t1 = [[0,-3.5],[-14,0],[0,3.5]]; t2 = [[0,-1.75],[-14,0],[0,1.75]]; }
+    else if (d === 1){ t1 = [[-3.5,0],[3.5,0],[0,7]]; t2 = [[-1.75,0],[1.75,0],[0,7]]; }
+    else { t1 = [[-3.5,0],[3.5,0],[0,-7]]; t2 = [[-1.75,0],[1.75,0],[0,-7]]; }
+    ctx.fillStyle = T_COLORS[nt];
+    ctx.globalAlpha = alpha * 0.45;
+    fillTri(t1, sx, sy, ctx);
+    ctx.globalAlpha = alpha;
+    fillTri(t2, sx, sy, ctx);
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ---------- 区块整块离屏渲染（性能优化：每帧只 blit 十几个大图，替代数千次小图绘制） ----------
+function buildChunkCanvas(cx, cy){
+  const m = 1; // 边缘 1 格余量（处理跨区块晕染，避免接缝）
+  const i0 = cx * CHUNK - m, j0 = cy * CHUNK - m;
+  const size = CHUNK + 2 * m;
+  const W = (2 * size - 2) * HALF_W + 36;
+  const H = (2 * size - 2) * HALF_H + 28;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  const ref = toScreen(i0 * CELL + 8, j0 * CELL + 8);
+  const Sx = ref.x - (size - 1) * HALF_W - 18;
+  const Sy = ref.y - 14;
+  for (let dj = 0; dj < size; dj++){
+    for (let di = 0; di < size; di++){
+      const i = i0 + di, j = j0 + dj;
+      const s = toScreen(i * CELL + 8, j * CELL + 8);
+      drawTileSpriteAt(g, i, j, s.x - Sx, s.y - Sy);
+    }
+  }
+  return { c, Sx, Sy };
+}
+function getChunkCanvas(cx, cy){
+  const key = cx + ',' + cy;
+  let ch = chunkCvs.get(key);
+  if (!ch){
+    ch = buildChunkCanvas(cx, cy);
+    chunkCvs.set(key, ch);
+  }
+  return ch;
+}
+
+// ---------- 音频 ----------
+let AC = null, masterGain = null;
+function initAudio(){
+  if (AC) return;
+  try {
+    AC = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = AC.createGain();
+    masterGain.gain.value = settings.volume / 100;
+    masterGain.connect(AC.destination);
+  } catch(e){ AC = null; }
+}
+function tone(freq, endFreq, dur, type, vol){
+  if (!AC || !masterGain) return;
+  const t0 = AC.currentTime;
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t0);
+  o.frequency.exponentialRampToValueAtTime(Math.max(20, endFreq), t0 + dur);
+  g.gain.setValueAtTime(vol, t0);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g); g.connect(masterGain);
+  o.start(t0); o.stop(t0 + dur + 0.02);
+}
+const SFX = {
+  shoot(){ tone(880, 620, 0.07, 'square', 0.10); },
+  eshoot(){ tone(240, 120, 0.14, 'sawtooth', 0.12); },
+  hit(){ tone(300, 140, 0.06, 'square', 0.12); },
+  ehit(){ tone(160, 90, 0.07, 'square', 0.14); },
+  melee(){ tone(130, 55, 0.12, 'triangle', 0.22); },
+  hurt(){ tone(110, 60, 0.16, 'sawtooth', 0.18); },
+  heal(){ tone(520, 800, 0.16, 'sine', 0.12); },
+  die(){ tone(220, 30, 0.5, 'sawtooth', 0.18); },
+  click(){ tone(700, 500, 0.05, 'square', 0.08); }
+};
+
+// ---------- A* 寻路 ----------
+class MinHeap{
+  constructor(cmp){ this.h = []; this.cmp = cmp; }
+  get size(){ return this.h.length; }
+  push(v){
+    const h = this.h; h.push(v);
+    let i = h.length - 1;
+    while (i > 0){
+      const p = (i - 1) >> 1;
+      if (this.cmp(h[p], h[i]) <= 0) break;
+      const t = h[p]; h[p] = h[i]; h[i] = t; i = p;
+    }
+  }
+  pop(){
+    const h = this.h, top = h[0], last = h.pop();
+    if (h.length){
+      h[0] = last; let i = 0;
+      for (;;){
+        const l = i * 2 + 1, r = l + 1; let m = i;
+        if (l < h.length && this.cmp(h[l], h[m]) < 0) m = l;
+        if (r < h.length && this.cmp(h[r], h[m]) < 0) m = r;
+        if (m === i) break;
+        const t = h[m]; h[m] = h[i]; h[i] = t; i = m;
+      }
+    }
+    return top;
+  }
+}
+function findPath(si, sj, ti, tj){
+  if (!walkable(ti, tj)) return null;
+  const dW = Math.abs(si - ti) + Math.abs(sj - tj);
+  if (dW > 600) return null; // 超出寻路距离上限
+  // 局部坐标寻路：按搜索范围动态分配数组（无限世界适配）
+  const W = dW + 8;
+  const minI = Math.min(si, ti) - 4, minJ = Math.min(sj, tj) - 4;
+  const N = W * W;
+  const idx = (i, j) => (i - minI) * W + (j - minJ);
+  const g = new Float32Array(N); g.fill(Infinity);
+  const came = new Int32Array(N); came.fill(-1);
+  const closed = new Uint8Array(N);
+  const manh = (a, b, c, d) => Math.abs(a - c) + Math.abs(b - d);
+  const sk = idx(si, sj), tk = idx(ti, tj);
+  g[sk] = 0;
+  const heap = new MinHeap((a, b) => a.f - b.f);
+  heap.push({ k: sk, f: manh(si, sj, ti, tj) });
+  while (heap.size){
+    const cur = heap.pop();
+    if (closed[cur.k]) continue;
+    if (cur.k === tk){
+      const path = [];
+      let k = tk;
+      while (k !== -1){ path.push({ i: (k / W | 0) + minI, j: (k % W) + minJ }); k = came[k]; }
+      path.reverse();
+      return path;
+    }
+    closed[cur.k] = 1;
+    const i = (cur.k / W | 0) + minI, j = (cur.k % W) + minJ;
+    const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+    for (let d = 0; d < 4; d++){
+      const ni = i + dirs[d][0], nj = j + dirs[d][1];
+      if (ni < minI || nj < minJ || ni >= minI + W || nj >= minJ + W) continue;
+      if (!walkable(ni, nj) || closed[idx(ni, nj)]) continue;
+      const nk = idx(ni, nj);
+      const cost = 1; // 水域不再额外计费，直线穿过不绕路（仅移动时减速）
+      const ng = g[cur.k] + cost;
+      if (ng < g[nk]){
+        g[nk] = ng; came[nk] = cur.k;
+        heap.push({ k: nk, f: ng + manh(ni, nj, ti, tj) });
+      }
+    }
+  }
+  return null;
+}
+  // 直线可通行检测（不可含 石/void；水可直行不绕路）
+function straightClear(x0, y0, x1, y1){
+  const dx = x1 - x0, dy = y1 - y0;
+  const dist = Math.hypot(dx, dy);
+  if (dist > 8000) return false;
+  const steps = Math.max(1, Math.ceil(dist / 8));
+  for (let s = 0; s <= steps; s++){
+    const t = s / steps;
+    const i = Math.floor((x0 + dx * t) / CELL), j = Math.floor((y0 + dy * t) / CELL);
+    const tt = tileType(i, j);
+    if (tt === TS.STONE || tt === TS.VOID) return false;
+  }
+  return true;
+}
+
+// ---------- 实体碰撞 ----------
+function canStand(px, py, r){
+  const pts = [
+    [px - r, py], [px + r, py], [px, py - r], [px, py + r],
+    [px - r * 0.7, py - r * 0.7], [px + r * 0.7, py - r * 0.7],
+    [px - r * 0.7, py + r * 0.7], [px + r * 0.7, py + r * 0.7]
+  ];
+  for (let k = 0; k < pts.length; k++){
+    const t = tileType(Math.floor(pts[k][0] / CELL), Math.floor(pts[k][1] / CELL));
+    if (t === TS.STONE || t === TS.VOID) return false;
+  }
+  return true;
+}
+function tileOfEntity(e){ return { i: Math.floor(e.x / CELL), j: Math.floor(e.y / CELL) }; }
+
+// ---------- 玩家 ----------
+const player = {
+  x: 0, y: 0, r: 5.5, hp: 100, maxHp: 100, shield: 40, maxShield: 40,
+  energy: 100, maxEnergy: 100, speed: PLAYER_SPEED,
+  mode: 'ranged', cooldown: 0, meleeCd: 0, meleeAnim: 0, meleeAngle: 0,
+  path: [], pathIdx: 0, target: null, stuckT: 0
+};
+function findSpawn(){
+  let cx = 0, cy = 0;
+  if (worldLimit > 0){ cx = worldLimit >> 1; cy = worldLimit >> 1; }
+  for (let rad = 0; rad < 80; rad++){
+    for (let ang = 0; ang < Math.PI * 2; ang += 0.3){
+      const x = Math.round(cx + Math.cos(ang) * rad);
+      const y = Math.round(cy + Math.sin(ang) * rad);
+      if (tileType(x, y) === TS.GRASS) return { x: x * CELL + 8, y: y * CELL + 8 };
+    }
+  }
+  return { x: cx * CELL + 8, y: cy * CELL + 8 };
+}
+function resetPlayer(){
+  const sp = findSpawn();
+  player.x = sp.x; player.y = sp.y;
+  player.spawnX = player.x; player.spawnY = player.y;
+  player.maxHp = settings.playerMaxHp; player.hp = player.maxHp;
+  player.shield = 40; player.energy = 100;
+  player.speed = PLAYER_SPEED * (settings.playerSpeed || 1);
+  player.cooldown = 0; player.meleeCd = 0; player.meleeAnim = 0;
+  player.mode = 'ranged'; player.path = []; player.pathIdx = 0; player.target = null;
+  player.stuckT = 0;
+}
+
+// ---------- 敌人 ----------
+const ENEMY_DEFS = {
+  1: { name:'盾兵', hp:60, shield:40, speed:PLAYER_SPEED*0.7, dmg:8, atkCd:1.2, range:30, color:'#c07030' },
+  2: { name:'近战兵', hp:50, shield:0, speed:PLAYER_SPEED*0.95, dmg:18, atkCd:1.0, range:30, color:'#d05050' },
+  3: { name:'治疗兵', hp:40, shield:0, speed:PLAYER_SPEED*0.55, dmg:0, atkCd:0, range:0, color:'#40b060' },
+  4: { name:'远程兵', hp:35, shield:0, speed:PLAYER_SPEED*0.55, dmg:14, atkCd:3.0, range:250, color:'#8050d0' }
+};
+let enemies = [];
+let monsterSpawnT = 0;
+
+// ---------- 友好生物（白天生成，只在玩家视野内刷新） ----------
+let friendlies = [];
+let friendlySpawnT = 2;
+function getFriendlyCap(){ return 12; } // 人口上限固定 12，刷新快慢由“刷新间隔”决定
+const FRIENDLY_DEFS = {
+  chicken: { name:'鸡', color:'#f4f4f4', speed:PLAYER_SPEED * 0.55 },
+  sheep:   { name:'羊', color:'#e8e8ea', speed:PLAYER_SPEED * 0.42 },
+  cow:     { name:'牛', color:'#7a4a30', speed:PLAYER_SPEED * 0.40 },
+  pig:     { name:'猪', color:'#f0a8b8', speed:PLAYER_SPEED * 0.50 },
+  rabbit:  { name:'兔', color:'#b8b8c4', speed:PLAYER_SPEED * 0.65 },
+  duck:    { name:'鸭', color:'#f2d94a', speed:PLAYER_SPEED * 0.50 },
+  deer:    { name:'鹿', color:'#c8905a', speed:PLAYER_SPEED * 0.62 },
+  fox:     { name:'狐', color:'#e07a3a', speed:PLAYER_SPEED * 0.68 },
+  squirrel:{ name:'松鼠', color:'#a86a3a', speed:PLAYER_SPEED * 0.70 },
+  cat:     { name:'猫', color:'#8a8a94', speed:PLAYER_SPEED * 0.58 }
+};
+function makeFriendly(kind, x, y){
+  const def = FRIENDLY_DEFS[kind] || FRIENDLY_DEFS.rabbit;
+  return {
+    kind, def, x, y, r: 5.5, hp: 12, maxHp: 12,
+    speed: def.speed, wanderT: 1 + Math.random() * 2, tx: x, ty: y,
+    path: null, pathIdx: 0, stuckT: 0, seed: Math.random() * 100,
+    fleeT: 0
+  };
+}
+function spawnFriendlyNearPlayer(){
+  const vb = viewBounds();
+  const pad = 30;
+  for (let attempt = 0; attempt < 40; attempt++){
+    const wx = vb.x0 + pad + Math.random() * (vb.x1 - vb.x0 - pad * 2);
+    const wy = vb.y0 + pad + Math.random() * (vb.y1 - vb.y0 - pad * 2);
+    const i = Math.floor(wx / CELL), j = Math.floor(wy / CELL);
+    const t = tileType(i, j);
+    if (inView(wx, wy) && (t === TS.GRASS || t === TS.FOREST || t === TS.HILL)){
+      const kinds = Object.keys(FRIENDLY_DEFS);
+      friendlies.push(makeFriendly(kinds[Math.floor(Math.random() * kinds.length)], i * CELL + 8, j * CELL + 8));
+      return;
+    }
+  }
+}
+function updateFriendly(f, dt){
+  f.wanderT -= dt;
+  const dp = Math.hypot(player.x - f.x, player.y - f.y);
+  if (dp < 70) f.fleeT = 1.2; // 靠近玩家会逃跑
+  if (f.fleeT > 0){
+    f.fleeT -= dt;
+    const ang = Math.atan2(f.y - player.y, f.x - player.x);
+    moveToward(f, f.x + Math.cos(ang) * 100, f.y + Math.sin(ang) * 100, dt);
+  } else if (f.wanderT <= 0){
+    f.wanderT = 2 + Math.random() * 3;
+    for (let k = 0; k < 10; k++){
+      const ang = Math.random() * Math.PI * 2;
+      const d = 40 + Math.random() * 160;
+      const tx = f.x + Math.cos(ang) * d, ty = f.y + Math.sin(ang) * d;
+      const i = Math.floor(tx / CELL), j = Math.floor(ty / CELL);
+      if (walkable(i, j) && tileType(i, j) !== TS.WATER){ f.tx = tx; f.ty = ty; break; }
+    }
+  } else {
+    moveToward(f, f.tx, f.ty, dt);
+  }
+}
+function getSpawnCap(){ return Math.max(2, Math.round(settings.monsterCount * diffMul.count)); }
+function makeEnemy(kind, x, y){
+  const def = ENEMY_DEFS[kind];
+  const hpMul = settings.monsterHp * diffMul.hp;
+  const dmgMul = settings.monsterDmg * diffMul.dmg;
+  const spdMul = settings.monsterSpeed * diffMul.speed;
+  const hp = Math.max(5, Math.round(def.hp * hpMul));
+  return {
+    kind, def, x, y, r: 5.5,
+    hp, maxHp: hp, shield: Math.round(def.shield * hpMul),
+    dmg: def.dmg * dmgMul, speed: def.speed * spdMul,
+    atkCd: 0.5 + Math.random(), healCd: 1 + Math.random(),
+    state: 'patrol', aim: 0, lockT: 0, lockedX: 0, lockedY: 0,
+    path: null, pathIdx: 0, stuckT: 0, patrolT: Math.random() * 2, patrolX: 0, patrolY: 0,
+    spawnX: x, spawnY: y, seed: Math.random() * 100
+  };
+}
+// 只在玩家视野内刷新怪物（远处不堆积，避免卡顿）
+function spawnOneNearPlayer(){
+  const vb = viewBounds();
+  const pad = 30;
+  for (let attempt = 0; attempt < 40; attempt++){
+    const wx = vb.x0 + pad + Math.random() * (vb.x1 - vb.x0 - pad * 2);
+    const wy = vb.y0 + pad + Math.random() * (vb.y1 - vb.y0 - pad * 2);
+    const i = Math.floor(wx / CELL), j = Math.floor(wy / CELL);
+    const t = tileType(i, j);
+    if (inView(wx, wy) && t !== TS.STONE && t !== TS.VOID && t !== TS.WATER){
+      enemies.push(makeEnemy(1 + Math.floor(Math.random() * 4), i * CELL + 8, j * CELL + 8));
+      return;
+    }
+  }
+}
+function spawnEnemies(){
+  enemies = [];
+  if (settings.spawnNight) return; // 夜晚刷新模式：开局不生成
+  const n = getSpawnCap();
+  const kinds = [];
+  for (let k = 0; k < n; k++) kinds.push((k % 4) + 1);
+  for (let k = kinds.length - 1; k > 0; k--){
+    const j = Math.floor(Math.random() * (k + 1));
+    const t = kinds[k]; kinds[k] = kinds[j]; kinds[j] = t;
+  }
+  const vb = viewBounds();
+  const pad = 30;
+  for (let k = 0; k < n; k++){
+    let x = 0, y = 0, ok = false;
+    for (let attempt = 0; attempt < 60 && !ok; attempt++){
+      const wx = vb.x0 + pad + Math.random() * (vb.x1 - vb.x0 - pad * 2);
+      const wy = vb.y0 + pad + Math.random() * (vb.y1 - vb.y0 - pad * 2);
+      const i = Math.floor(wx / CELL), j = Math.floor(wy / CELL);
+      const t = tileType(i, j);
+      if (inView(wx, wy) && t !== TS.STONE && t !== TS.VOID && t !== TS.WATER){
+        x = i * CELL + 8; y = j * CELL + 8; ok = true;
+      }
+    }
+    if (!ok){ x = player.x + 200; y = player.y + 200; }
+    enemies.push(makeEnemy(kinds[k], x, y));
+  }
+}
+function nearestEnemy(maxD){
+  let best = null, bd = maxD;
+  for (const e of enemies){
+    const d = Math.hypot(e.x - player.x, e.y - player.y);
+    if (d < bd){ bd = d; best = e; }
+  }
+  return best;
+}
+function nearestAlly(e){
+  let best = null, bd = Infinity;
+  for (const o of enemies){
+    if (o === e) continue;
+    const d = Math.hypot(o.x - e.x, o.y - e.y);
+    if (d < bd){ bd = d; best = o; }
+  }
+  return best;
+}
+
+// 移动（带卡住检测 → A*）
+function stepMove(e, tx, ty, sp, dt){
+  const dx = tx - e.x, dy = ty - e.y;
+  const d = Math.hypot(dx, dy) || 1;
+  const vx = dx / d * sp, vy = dy / d * sp;
+  const nx = e.x + vx * dt, ny = e.y + vy * dt;
+  if (canStand(nx, e.y, e.r)) e.x = nx;
+  if (canStand(e.x, ny, e.r)) e.y = ny;
+}
+function moveToward(e, tx, ty, dt, spMul){
+  const wf = isWaterAt(Math.floor(e.x / CELL), Math.floor(e.y / CELL)) ? 0.6 : 1;
+  const sp = e.speed * wf * (spMul || 1);
+  if (e.path && e.pathIdx < e.path.length){
+    const w = e.path[e.pathIdx];
+    const wx = w.i * CELL + 8, wy = w.j * CELL + 8;
+    const d = Math.hypot(wx - e.x, wy - e.y);
+    if (d < 4){ e.pathIdx++; if (e.pathIdx >= e.path.length){ e.path = null; e.stuckT = 0; } return; }
+    stepMove(e, wx, wy, sp, dt);
+    return;
+  }
+  const d = Math.hypot(tx - e.x, ty - e.y);
+  if (d < 2){ e.stuckT = 0; return; }
+  const bx = e.x, by = e.y;
+  stepMove(e, tx, ty, sp, dt);
+  const moved = Math.hypot(e.x - bx, e.y - by);
+  if (moved < sp * dt * 0.3) e.stuckT += dt; else e.stuckT = 0;
+  if (e.stuckT > 0.6){
+    e.stuckT = 0;
+    const me = tileOfEntity(e);
+    const p = findPath(me.i, me.j, Math.floor(tx / CELL), Math.floor(ty / CELL));
+    if (p && p.length > 1){ e.path = p; e.pathIdx = 1; }
+  }
+}
+function pickPatrol(e){
+  for (let k = 0; k < 20; k++){
+    const ang = Math.random() * Math.PI * 2;
+    const dist = 100 + Math.random() * 300;
+    const x = e.spawnX + Math.cos(ang) * dist;
+    const y = e.spawnY + Math.sin(ang) * dist;
+    const i = Math.floor(x / CELL), j = Math.floor(y / CELL);
+    if (walkable(i, j) && tileType(i, j) !== TS.WATER){
+      e.patrolX = i * CELL + 8; e.patrolY = j * CELL + 8;
+      e.patrolT = 1.5 + Math.random() * 2.5;
+      return;
+    }
+  }
+  e.patrolT = 2;
+}
+
+function updateEnemy(e, dt){
+  e.atkCd -= dt; e.healCd -= dt; e.patrolT -= dt;
+  const distP = Math.hypot(player.x - e.x, player.y - e.y);
+  const inMelee = distP <= e.def.range + player.r;
+
+  // 猎杀趋近：超过索敌距离时，缓慢向玩家靠拢（距离缩至 600，避免阴魂不散）
+  const stalk = (distP < 600) ? 0.45 : 0;
+  if (e.kind === 1){ // 盾兵：挡路 + 近战
+    if (distP < 100){
+      const ally = nearestAlly(e);
+      // 有队友：挡在玩家与队友之间（距玩家 50）；无队友：在玩家外侧保持 50 距离
+      let ang = Math.atan2(e.y - player.y, e.x - player.x);
+      if (ally) ang = Math.atan2(ally.y - player.y, ally.x - player.x);
+      moveToward(e, player.x + Math.cos(ang) * 50, player.y + Math.sin(ang) * 50, dt);
+      if (inMelee && e.atkCd <= 0){ player.takeDamage(e.dmg); e.atkCd = e.def.atkCd; SFX.ehit(); }
+    } else {
+      if (stalk){
+        moveToward(e, player.x, player.y, dt, stalk);
+      } else {
+        if (e.patrolT <= 0) pickPatrol(e);
+        moveToward(e, e.patrolX, e.patrolY, dt);
+      }
+    }
+  } else if (e.kind === 2){ // 近战兵：追击
+    if (distP < 300){
+      moveToward(e, player.x, player.y, dt);
+      if (inMelee && e.atkCd <= 0){ player.takeDamage(e.dmg); e.atkCd = e.def.atkCd; SFX.ehit(); }
+    } else {
+      if (stalk){
+        moveToward(e, player.x, player.y, dt, stalk);
+      } else {
+        if (e.patrolT <= 0) pickPatrol(e);
+        moveToward(e, e.patrolX, e.patrolY, dt);
+      }
+    }
+  } else if (e.kind === 3){ // 治疗兵
+    let hurt = null, bd = 80;
+    for (const o of enemies){
+      if (o === e || o.hp >= o.maxHp) continue;
+      const d = Math.hypot(o.x - e.x, o.y - e.y);
+      if (d < bd){ bd = d; hurt = o; }
+    }
+    if (hurt){
+      if (bd <= 80 && e.healCd <= 0){
+        hurt.hp = Math.min(hurt.maxHp, hurt.hp + 15);
+        e.healCd = 2;
+        spawnParticles(hurt.x, hurt.y, 6, '#5eff8a', 40);
+        spawnFloat(hurt.x, hurt.y - 14, '+15', '#5eff8a');
+        SFX.heal();
+      } else {
+        moveToward(e, hurt.x, hurt.y, dt);
+      }
+    } else {
+      const t = nearestAlly(e) || player;
+      moveToward(e, t.x, t.y, dt);
+    }
+  } else if (e.kind === 4){ // 远程兵（索敌 250，超范围立即脱锁）
+    if (distP < e.def.range){
+      if (e.state === 'cd'){
+        if (e.atkCd <= 0){ e.state = 'aim'; e.aim = 0; }
+      } else if (e.state === 'aim'){
+        e.aim += dt * 0.6;
+        moveToward(e, player.x, player.y, dt);
+        if (e.aim >= 1){
+          e.state = 'lock'; e.lockT = 0;
+          e.lockedX = player.x; e.lockedY = player.y;
+        }
+      } else if (e.state === 'lock'){
+        e.lockT += dt;
+        if (e.lockT >= 0.2){
+          const dx = e.lockedX - e.x, dy = e.lockedY - e.y;
+          const d = Math.hypot(dx, dy) || 1;
+          bullets.push({ x: e.x, y: e.y, vx: dx / d * PLAYER_SPEED * 2, vy: dy / d * PLAYER_SPEED * 2, team: 'e', dmg: e.dmg, life: 4 });
+          e.state = 'cd'; e.atkCd = 1.8 / 0.6; e.aim = 0;
+          SFX.eshoot();
+        }
+      } else {
+        // idle / patrol：进入瞄准
+        e.state = 'aim'; e.aim = 0;
+      }
+    } else {
+      // 脱锁：清空瞄准状态，指示线立即消失
+      e.state = 'idle'; e.aim = 0;
+      if (stalk){
+        moveToward(e, player.x, player.y, dt, stalk);
+      } else {
+        if (e.patrolT <= 0) pickPatrol(e);
+        moveToward(e, e.patrolX, e.patrolY, dt);
+      }
+    }
+  }
+}
+
+// ---------- 子弹 / 粒子 / 飘字 ----------
+let bullets = [], particles = [], floats = [];
+function spawnParticles(x, y, n, color, speed){
+  n = Math.max(0, Math.round(n * ((settings.particles || 100) / 100)));
+  if (n <= 0) return;
+  for (let k = 0; k < n; k++){
+    const ang = Math.random() * Math.PI * 2;
+    const sp = speed * (0.4 + Math.random() * 0.8);
+    particles.push({
+      x, y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp,
+      life: 0.3 + Math.random() * 0.3, max: 0.6, size: 2 + Math.floor(Math.random() * 2), color
+    });
+  }
+}
+function spawnFloat(x, y, text, color){
+  if (!settings.dmgTxt) return;
+  floats.push({ x, y, text, color, life: 0.9, max: 0.9 });
+}
+
+// ---------- 伤害 ----------
+function enemyTakeDamage(e, dmg, source){
+  source = source || 'other';
+  if (e.shield > 0){
+    const absorbed = Math.min(e.shield, dmg);
+    e.shield -= absorbed; dmg -= absorbed;
+    if (e.shield <= 0) stats.shieldBreaks++;
+    spawnFloat(e.x, e.y - 14, '-' + absorbed, '#6fb4ff');
+  }
+  if (dmg > 0){
+    e.hp -= dmg;
+    spawnFloat(e.x, e.y - 14, '-' + dmg, '#ff8080');
+    spawnParticles(e.x, e.y, 4, e.def.color, 50);
+  }
+  if (e.hp <= 0){
+    stats.kills++;
+    if (source === 'ranged') stats.rangedKills++;
+    else if (source === 'melee') stats.meleeKills++;
+    if (dayState().name === '夜晚') stats.nightKills++;
+    spawnParticles(e.x, e.y, 14, e.def.color, 90);
+    SFX.ehit();
+  }
+}
+player.takeDamage = function(dmg){
+  if (this.shield > 0){
+    const absorbed = Math.min(this.shield, dmg);
+    this.shield -= absorbed; dmg -= absorbed;
+    spawnFloat(this.x, this.y - 16, '-' + absorbed, '#6fb4ff');
+  }
+  if (dmg > 0){
+    this.hp -= dmg;
+    spawnFloat(this.x, this.y - 16, '-' + dmg, '#ff8080');
+    if (settings.shake) shake = 5;
+    SFX.hurt();
+  }
+  if (this.hp <= 0){
+    this.hp = 0;
+    gameState = 'dead';
+    const el = document.getElementById('deathStats');
+    el.textContent = '累计击杀 ' + stats.kills + ' 只 · 存活 ' + (runDay + 1) + ' 天';
+    saveStats();
+    setTimeout(() => showOverlay('death'), 500);
+    SFX.die();
+  }
+};
+
+// ---------- 昼夜 ----------
+let dayT = 0;
+function dayState(){
+  const t = dayT;
+  let name, a, blue;
+  const ease = x => x * x * (3 - 2 * x);
+  if (t < 0.12){ name = '黎明'; a = 0.42 - 0.17 * ease(t / 0.12); blue = 0.18; }
+  else if (t < 0.45){ name = '白天'; a = 0.25 - 0.19 * ease((t - 0.12) / 0.33); blue = 0.06; }
+  else if (t < 0.62){ name = '黄昏'; a = 0.06 + 0.36 * ease((t - 0.45) / 0.17); blue = 0.14 + 0.14 * ease((t - 0.45) / 0.17); }
+  else { name = '夜晚'; a = 0.42 + 0.30 * ease((t - 0.62) / 0.38); blue = 0.28 + 0.22 * ease((t - 0.62) / 0.38); }
+  return { name, a: Math.min(0.8, a), blue: Math.min(0.5, blue) };
+}
+
+// ---------- 相机 ----------
+let camX = 0, camY = 0, shake = 0;
+const view = { w: 0, h: 0 };
+function updateCamera(dt){
+  const p = toScreen(player.x, player.y);
+  // 无限世界：相机完全自由（上下左右都无限）
+  // 有限世界：钳制在 N×N 范围内
+  let tx = p.x - view.w / 2, ty = p.y - view.h / 2;
+  if (worldLimit > 0){
+    const B = worldLimit * TILE_W;
+    tx = Math.max(-B, Math.min(B - view.w, tx));
+    ty = Math.max(0, Math.min(2 * B - view.h, ty));
+  }
+  const k = Math.min(1, dt * 8);
+  camX += (tx - camX) * k;
+  camY += (ty - camY) * k;
+  shake *= Math.pow(0.001, dt);
+  if (shake < 0.1) shake = 0;
+}
+
+// ---------- 游戏状态 ----------
+let gameState = 'menu'; // menu | playing | paused | dead
+let lastTime = 0;
+
+// ---------- 设置目标 / 移动 ----------
+function setTarget(wx, wy){
+  if (Math.hypot(wx - player.x, wy - player.y) > 8000){ toast('距离过远，请分段移动'); return; }
+  const ti = Math.floor(wx / CELL), tj = Math.floor(wy / CELL);
+  const t = tileType(ti, tj);
+  if (t === TS.VOID || t === TS.STONE){ toast('无法到达（障碍物）'); return; }
+  const me = tileOfEntity(player);
+  if (me.i === ti && me.j === tj){ player.path = []; player.target = null; return; }
+  if (straightClear(player.x, player.y, wx, wy)){
+    // 直线可达：路径点仅含终点格，从 0 开始走
+    player.path = [{ i: ti, j: tj }];
+    player.pathIdx = 0;
+  } else {
+    const p = findPath(me.i, me.j, ti, tj);
+    if (!p){ toast('无法到达'); return; }
+    player.path = p;
+    player.pathIdx = 1; // 跳过起点格
+  }
+  player.target = { x: wx, y: wy };
+}
+function cancelMove(){ player.path = []; player.pathIdx = 0; player.target = null; }
+
+function updatePlayer(dt){
+  player.cooldown -= dt;
+  player.meleeCd -= dt;
+  if (player.meleeAnim > 0) player.meleeAnim = Math.max(0, player.meleeAnim - dt);
+  player.energy = Math.min(player.maxEnergy, player.energy + 8 * dt);
+
+  // 沿路径移动
+  if (player.path && player.pathIdx < player.path.length){
+    const px0 = player.x, py0 = player.y;
+    const w = player.path[player.pathIdx];
+    const wx = w.i * CELL + 8, wy = w.j * CELL + 8;
+    const d = Math.hypot(wx - player.x, wy - player.y);
+    const wf = isWaterAt(Math.floor(player.x / CELL), Math.floor(player.y / CELL)) ? 0.6 : 1;
+    const sp = player.speed * wf;
+    if (d < 4){ player.pathIdx++; player.stuckT = 0; }
+    else {
+      const bx = player.x, by = player.y;
+      const vx = (wx - player.x) / d * sp, vy = (wy - player.y) / d * sp;
+      const nx = player.x + vx * dt, ny = player.y + vy * dt;
+      if (canStand(nx, player.y, player.r)) player.x = nx;
+      if (canStand(player.x, ny, player.r)) player.y = ny;
+      // 防卡脚：绕障碍时长时间几乎不动，则跳过当前路点继续走
+      const moved = Math.hypot(player.x - bx, player.y - by);
+      if (moved < sp * dt * 0.3) player.stuckT += dt; else player.stuckT = 0;
+      if (player.stuckT > 0.6){ player.pathIdx++; player.stuckT = 0; }
+    }
+    // 累计移动距离（成就）
+    const movedNow = Math.hypot(player.x - px0, player.y - py0);
+    if (movedNow > 0){
+      stats.dist += movedNow;
+      const dd = Math.hypot(player.x - player.spawnX, player.y - player.spawnY);
+      if (dd > stats.maxDist) stats.maxDist = dd;
+    }
+  }
+
+  // 远程自动攻击
+  if (player.mode === 'ranged' && player.cooldown <= 0 && player.energy >= 8){
+    const t = nearestEnemy(350);
+    if (t){
+      const dx = t.x - player.x, dy = t.y - player.y;
+      const d = Math.hypot(dx, dy) || 1;
+      bullets.push({ x: player.x, y: player.y, vx: dx / d * PLAYER_SPEED * 1.5, vy: dy / d * PLAYER_SPEED * 1.5, team: 'p', dmg: 12, life: 3 });
+      player.energy -= 8;
+      player.cooldown = 1 / settings.fireRate;
+      SFX.shoot();
+    }
+  }
+}
+
+// ---------- 近战 ----------
+let spaceHeld = false;
+function doMelee(){
+  if (player.meleeCd > 0 || player.mode !== 'melee') return;
+  player.meleeCd = settings.meleeCd || 0.6;
+  const dmg = settings.meleeDmg || 20;
+  SFX.melee();
+  // 挥砍动画：朝最近的敌人/友好生物方向
+  let tgt = nearestEnemy(60);
+  if (!tgt){
+    let bd = 60;
+    for (const f of friendlies){ const d = Math.hypot(f.x - player.x, f.y - player.y); if (d < bd){ bd = d; tgt = f; } }
+  }
+  player.meleeAngle = tgt ? Math.atan2(tgt.y - player.y, tgt.x - player.x) : (Math.random() * Math.PI * 2);
+  player.meleeAnim = 0.25;
+  // 白色闪光粒子环
+  for (let k = 0; k < 14; k++){
+    const ang = Math.random() * Math.PI * 2;
+    particles.push({
+      x: player.x, y: player.y, vx: Math.cos(ang) * (50 + Math.random() * 60), vy: Math.sin(ang) * (50 + Math.random() * 60),
+      life: 0.25, max: 0.25, size: 3, color: '#ffffff'
+    });
+  }
+  let hitEnemy = false;
+  for (const e of enemies.slice()){
+    const d = Math.hypot(e.x - player.x, e.y - player.y);
+    if (d <= 30 + e.r){
+      enemyTakeDamage(e, dmg, 'melee');
+      hitEnemy = true;
+    }
+  }
+  // 近战吸血：按伤害的百分比回血
+  if (hitEnemy && settings.lifesteal > 0 && player.hp < player.maxHp){
+    const heal = Math.min(dmg * settings.lifesteal / 100, player.maxHp - player.hp);
+    if (heal > 0){
+      player.hp += heal;
+      spawnFloat(player.x, player.y - 16, '+' + Math.round(heal), '#5eff8a');
+    }
+  }
+  // 攻击友好生物：固定回血，生物受击逃跑/死亡
+  for (const f of friendlies.slice()){
+    const d = Math.hypot(f.x - player.x, f.y - player.y);
+    if (d <= 30 + f.r){
+      f.hp -= dmg;
+      f.fleeT = 2;
+      spawnParticles(f.x, f.y, 6, f.def.color, 60);
+      SFX.hit();
+      if (settings.friendlyHeal > 0 && player.hp < player.maxHp){
+        const heal = Math.min(settings.friendlyHeal, player.maxHp - player.hp);
+        if (heal > 0){
+          player.hp += heal;
+          spawnFloat(player.x, player.y - 16, '+' + heal, '#5eff8a');
+          SFX.heal();
+        }
+      }
+      if (f.hp <= 0){
+        spawnParticles(f.x, f.y, 10, f.def.color, 80);
+        spawnFloat(f.x, f.y - 14, '💨', '#9fb0c8');
+        friendlies.splice(friendlies.indexOf(f), 1);
+      }
+    }
+  }
+}
+
+// ---------- 更新 ----------
+function update(dt){
+  const prevDay = dayT;
+  dayT = (dayT + dt * settings.dayNightSpeed / 120) % 1;
+  if (dayT < prevDay){ stats.days++; runDay++; } // 天数 +1（runDay 为本局天数，死亡重开归零）
+
+  updateChunks();
+  updatePlayer(dt);
+  if (spaceHeld && player.mode === 'melee') doMelee();
+
+  // 怪物无限刷新（只在视野内，间隔受难度影响；"仅夜晚刷新"模式只在夜晚补怪）
+  monsterSpawnT -= dt;
+  if (enemies.length < getSpawnCap()){
+    const isNight = dayState().name === '夜晚';
+    if ((!settings.spawnNight || isNight) && monsterSpawnT <= 0){
+      monsterSpawnT = getSpawnInterval();
+      spawnOneNearPlayer();
+    }
+  }
+
+  // 友好生物：白天在视野内按刷新间隔补充，夜晚回家（消失）
+  const fDay = (dayState().name === '黎明' || dayState().name === '白天' || dayState().name === '黄昏');
+  if (fDay){
+    friendlySpawnT -= dt;
+    if (friendlySpawnT <= 0){
+      friendlySpawnT = Math.max(2, settings.friendlySpawnInterval || 3);
+      if (friendlies.length < getFriendlyCap()) spawnFriendlyNearPlayer();
+    }
+  } else {
+    for (let i = friendlies.length - 1; i >= 0; i--){
+      const f = friendlies[i];
+      f._gone = (f._gone || 0) + dt;
+      if (f._gone > 0.5 + (f.seed % 1) * 1.2){
+        spawnParticles(f.x, f.y, 6, f.def.color, 60);
+        spawnFloat(f.x, f.y - 14, '💤', '#9fb0c8');
+        friendlies.splice(i, 1);
+      }
+    }
+  }
+
+  for (const e of enemies){
+    if (Math.abs(e.x - player.x) > 5000 || Math.abs(e.y - player.y) > 5000){ e._far = true; continue; }
+    updateEnemy(e, dt);
+  }
+
+  for (const f of friendlies){
+    if (Math.abs(f.x - player.x) > 3000 || Math.abs(f.y - player.y) > 3000){ f._far = true; continue; }
+    updateFriendly(f, dt);
+  }
+
+  // 实体分离（分离后若撞入障碍则回退，避免卡进石头）
+  const allMobs = enemies.concat(friendlies);
+  for (let a = 0; a < allMobs.length; a++){
+    for (let b = a + 1; b < allMobs.length; b++){
+      const A = allMobs[a], B = allMobs[b];
+      const dx = B.x - A.x, dy = B.y - A.y;
+      const d = Math.hypot(dx, dy);
+      if (d > 0 && d < 14){
+        const push = (14 - d) / 2;
+        const ux = dx / d, uy = dy / d;
+        const ax = A.x, ay = A.y, bx = B.x, by = B.y;
+        A.x -= ux * push; A.y -= uy * push;
+        B.x += ux * push; B.y += uy * push;
+        if (!canStand(A.x, A.y, A.r)){ A.x = ax; A.y = ay; }
+        if (!canStand(B.x, B.y, B.r)){ B.x = bx; B.y = by; }
+      }
+    }
+  }
+
+  // 清理死亡 / 远离敌人
+  for (let i = enemies.length - 1; i >= 0; i--){
+    const en = enemies[i];
+    if (en.hp <= 0 || en._far) enemies.splice(i, 1);
+  }
+  for (let i = friendlies.length - 1; i >= 0; i--){
+    if (friendlies[i]._far) friendlies.splice(i, 1);
+  }
+
+  // 子弹
+  for (let i = bullets.length - 1; i >= 0; i--){
+    const b = bullets[i];
+    b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
+    let dead = b.life <= 0 || Math.abs(b.x - player.x) > 6000 || Math.abs(b.y - player.y) > 6000;
+    if (!dead){
+      if (b.team === 'p'){
+        for (const e of enemies){
+          if (Math.hypot(e.x - b.x, e.y - b.y) < e.r + 4){
+            enemyTakeDamage(e, b.dmg, 'ranged');
+            spawnParticles(b.x, b.y, 8, '#ffe98a', 70);
+            SFX.hit();
+            dead = true;
+            break;
+          }
+        }
+      } else {
+        if (Math.hypot(player.x - b.x, player.y - b.y) < player.r + 4){
+          player.takeDamage(b.dmg);
+          spawnParticles(b.x, b.y, 8, '#ff5050', 70);
+          dead = true;
+        }
+      }
+    }
+    if (dead) bullets.splice(i, 1);
+  }
+
+  // 粒子
+  for (let i = particles.length - 1; i >= 0; i--){
+    const p = particles[i];
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    p.life -= dt;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+  if (particles.length > 400) particles.splice(0, particles.length - 400); // 性能保护
+  // 飘字
+  for (let i = floats.length - 1; i >= 0; i--){
+    const f = floats[i];
+    f.y -= 22 * dt; f.life -= dt;
+    if (f.life <= 0) floats.splice(i, 1);
+  }
+
+  // 小地图缓存刷新（0.3s 一次）
+  minimapT -= dt;
+  if (minimapT <= 0){ minimapT = 0.3; drawMinimapCache(); }
+
+  // 周期保存统计（成就数据）
+  saveT -= dt;
+  if (saveT <= 0){ saveT = 15; saveStats(); }
+
+  // 自动存档
+  autoSaveT -= dt;
+  if (autoSaveT <= 0){ autoSaveT = Math.max(5, settings.saveInterval || 10); saveGame(); }
+
+  checkAchievements();
+  updateCamera(dt);
+}
+
+// ---------- 渲染 ----------
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+function resize(){
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const sc = Math.max(0.5, Math.min(1, settings.renderScale || 1));
+  view.w = window.innerWidth; view.h = window.innerHeight;
+  canvas.width = Math.max(64, Math.floor(view.w * dpr * sc));
+  canvas.height = Math.max(64, Math.floor(view.h * dpr * sc));
+  canvas.style.width = view.w + 'px';
+  canvas.style.height = view.h + 'px';
+  ctx.setTransform(dpr * sc, 0, 0, dpr * sc, 0, 0);
+}
+window.addEventListener('resize', resize);
+
+function render(time){
+  ctx.clearRect(0, 0, view.w, view.h);
+  if (gameState === 'menu') return;
+
+  const ox = Math.round(-camX + shake * (Math.random() * 2 - 1));
+  const oy = Math.round(-camY + shake * (Math.random() * 2 - 1));
+
+  // 可见地块范围
+  const corners = [[camX, camY], [camX + view.w, camY], [camX, camY + view.h], [camX + view.w, camY + view.h]];
+  let mi = 1e9, mj = 1e9, Mi = -1e9, Mj = -1e9;
+  for (const c of corners){
+    const u = (c[0] / HALF_W + c[1] / HALF_H) / 2;
+    const v = (c[1] / HALF_H - c[0] / HALF_W) / 2;
+    const i = Math.floor(u), j = Math.floor(v);
+    if (i < mi) mi = i; if (i > Mi) Mi = i;
+    if (j < mj) mj = j; if (j > Mj) Mj = j;
+  }
+  const limLo = worldLimit > 0 ? 0 : -1e9;
+  const limHi = worldLimit > 0 ? worldLimit - 1 : 1e9;
+  mi = Math.max(limLo, mi - 1); mj = Math.max(limLo, mj - 1);
+  Mi = Math.min(limHi, Mi + 1); Mj = Math.min(limHi, Mj + 1);
+
+  // 地形（按区块整块 blit：一次 drawImage 代替数千次小图绘制）
+  const c0x = Math.floor(mi / CHUNK), c1x = Math.floor(Mi / CHUNK);
+  const c0y = Math.floor(mj / CHUNK), c1y = Math.floor(Mj / CHUNK);
+  for (let cy = c0y; cy <= c1y; cy++){
+    for (let cx = c0x; cx <= c1x; cx++){
+      const ch = getChunkCanvas(cx, cy);
+      ctx.drawImage(ch.c, Math.round(ch.Sx + ox), Math.round(ch.Sy + oy));
+    }
+  }
+
+  // 水波纹（可关闭，关闭后更流畅）
+  ctx.imageSmoothingEnabled = !settings.pixel;
+  if (settings.waterWaves){
+    ctx.strokeStyle = 'rgba(255,255,255,.30)';
+    ctx.lineWidth = 1;
+    for (let j = mj; j <= Mj; j++){
+      for (let i = mi; i <= Mi; i++){
+        if (tileType(i, j) !== TS.WATER) continue;
+        const s = toScreen(i * CELL + 8, j * CELL + 8);
+        const off = Math.sin(time * 0.002 + i * 0.4 + j * 0.7) * 2;
+        ctx.beginPath();
+        ctx.ellipse(s.x + ox, s.y + oy + off, 9, 2.5, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+  }
+
+  // 路径虚线
+  if (player.path && player.pathIdx < player.path.length && gameState === 'playing'){
+    const sp0 = toScreen(player.x, player.y);
+    ctx.setLineDash([5, 4]);
+    ctx.strokeStyle = 'rgba(255,255,240,.85)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(sp0.x + ox, sp0.y + oy);
+    for (let k = player.pathIdx; k < player.path.length; k++){
+      const w = player.path[k];
+      const s = toScreen(w.i * CELL + 8, w.j * CELL + 8);
+      ctx.lineTo(s.x + ox, s.y + oy);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // 远程兵瞄准线
+  for (const e of enemies){
+    if (e.kind === 4 && (e.state === 'lock' || (e.state === 'aim' && e.aim > 0.01))){
+      const s1 = toScreen(e.x, e.y);
+      const s2 = toScreen(e.state === 'lock' ? e.lockedX : player.x, e.state === 'lock' ? e.lockedY : player.y);
+      const alpha = 0.3 + 0.7 * Math.min(1, e.aim);
+      ctx.strokeStyle = 'rgba(255,60,60,' + alpha.toFixed(2) + ')';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(s1.x + ox, s1.y + oy - 10);
+      ctx.lineTo(s2.x + ox, s2.y + oy - 10);
+      ctx.stroke();
+    }
+  }
+
+  // 排序绘制：实体 / 子弹 / 粒子
+  const drawables = [];
+  const entList = [player, ...enemies];
+  for (const ent of entList){
+    drawables.push({ y: ent.y, f: () => drawEntity(ent, time) });
+  }
+  for (const f of friendlies){
+    drawables.push({ y: f.y, f: () => drawFriendly(f, time) });
+  }
+  for (const b of bullets){
+    drawables.push({ y: b.y, f: () => drawBullet(b, ox, oy) });
+  }
+  for (const p of particles){
+    drawables.push({ y: p.y, f: () => {
+      ctx.globalAlpha = Math.max(0, p.life / p.max);
+      ctx.fillStyle = p.color;
+      const s = toScreen(p.x, p.y);
+      ctx.fillRect(Math.round(s.x + ox - p.size / 2), Math.round(s.y + oy - p.size / 2), p.size, p.size);
+      ctx.globalAlpha = 1;
+    }});
+  }
+  drawables.sort((a, b) => a.y - b.y);
+  for (const d of drawables) d.f();
+
+  // 飘字
+  ctx.textAlign = 'center';
+  for (const f of floats){
+    ctx.globalAlpha = Math.max(0, f.life / f.max);
+    ctx.font = 'bold 11px "Courier New", monospace';
+    ctx.fillStyle = '#000';
+    const s = toScreen(f.x, f.y);
+    ctx.fillText(f.text, s.x + ox + 1, s.y + oy + 1);
+    ctx.fillStyle = f.color;
+    ctx.fillText(f.text, s.x + ox, s.y + oy);
+  }
+  ctx.globalAlpha = 1;
+
+  // 昼夜覆盖
+  const ds = dayState();
+  const grad = ctx.createRadialGradient(view.w / 2, view.h / 2, Math.min(view.w, view.h) * 0.25, view.w / 2, view.h / 2, Math.max(view.w, view.h) * 0.72);
+  grad.addColorStop(0, 'rgba(5,8,30,0)');
+  grad.addColorStop(1, 'rgba(5,8,30,' + ds.a.toFixed(3) + ')');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, view.w, view.h);
+  if (ds.blue > 0.01){
+    ctx.fillStyle = 'rgba(12,18,52,' + (ds.blue * 0.55).toFixed(3) + ')';
+    ctx.fillRect(0, 0, view.w, view.h);
+  }
+
+  drawHUD(ds);
+}
+
+function drawEntity(ent, time){
+  const s = toScreen(ent.x, ent.y);
+  const sx = s.x - camX, sy = s.y - camY;
+  const isPlayer = ent === player;
+
+  // 阴影（随体积缩小）
+  ctx.fillStyle = 'rgba(0,0,0,.30)';
+  ctx.beginPath();
+  ctx.ellipse(sx, sy + 3, 6, 2.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  const bob = Math.sin(time * 0.006 + (isPlayer ? 0 : ent.seed)) * 1.5;
+  const img = isPlayer ? settings.images.player : settings.images[String(ent.kind)];
+  if (img){
+    ctx.imageSmoothingEnabled = !settings.pixel;
+    const h = 26, w = h * (img.width / img.height);
+    ctx.drawImage(img, Math.round(sx - w / 2), Math.round(sy - h - bob), w, h);
+    ctx.imageSmoothingEnabled = false;
+  } else {
+    const color = isPlayer ? '#f2f2f2' : ent.def.color;
+    const outline = isPlayer ? '#333' : '#222';
+    // 身体（缩小后的 12×14 像素块）
+    ctx.fillStyle = outline;
+    ctx.fillRect(Math.round(sx - 6), Math.round(sy - 14 - bob), 12, 14);
+    ctx.fillStyle = color;
+    ctx.fillRect(Math.round(sx - 5), Math.round(sy - 13 - bob), 10, 12);
+    // 眼睛
+    ctx.fillStyle = isPlayer ? '#3a7bd5' : '#111';
+    ctx.fillRect(Math.round(sx - 3), Math.round(sy - 9 - bob), 2, 2);
+    ctx.fillRect(Math.round(sx + 1), Math.round(sy - 9 - bob), 2, 2);
+    if (isPlayer){
+      // 头盔/护目镜
+      ctx.fillStyle = '#d8dce6';
+      ctx.fillRect(Math.round(sx - 5), Math.round(sy - 13 - bob), 10, 4);
+    } else if (ent.kind === 1){
+      // 盾兵：小盾牌
+      ctx.fillStyle = '#e8b060';
+      ctx.fillRect(Math.round(sx + 1), Math.round(sy - 8 - bob), 4, 6);
+    } else if (ent.kind === 2){
+      // 近战兵：刀
+      ctx.strokeStyle = '#ddd';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(sx + 4, sy - 7 - bob);
+      ctx.lineTo(sx + 7, sy - 12 - bob);
+      ctx.stroke();
+    } else if (ent.kind === 3){
+      // 治疗兵：十字
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(Math.round(sx - 1), Math.round(sy - 7 - bob), 2, 5);
+      ctx.fillRect(Math.round(sx - 2), Math.round(sy - 5 - bob), 5, 2);
+    } else if (ent.kind === 4){
+      // 远程兵：红色光点
+      ctx.fillStyle = '#ff5050';
+      ctx.fillRect(Math.round(sx + 2), Math.round(sy - 8 - bob), 2, 2);
+    }
+  }
+
+  // 玩家护盾指示（半透明蓝圈）
+  if (isPlayer && player.shield > 0){
+    ctx.strokeStyle = 'rgba(80,150,255,.55)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(sx, sy - 7, 10, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // 近战挥砍弧光（白色主弧 + 金色副弧）
+  if (isPlayer && player.meleeAnim > 0){
+    const t = 1 - player.meleeAnim / 0.25;
+    ctx.save();
+    ctx.translate(sx, sy - 8 - bob);
+    ctx.rotate(player.meleeAngle);
+    ctx.globalAlpha = Math.max(0, (1 - t) * 0.9);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, 12 + t * 14, -0.7 + t * 0.4, 0.7 + t * 0.9);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,233,138,.85)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, 10 + t * 14, -0.5 + t * 0.4, 0.5 + t * 0.9);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  // 血条
+  if (!isPlayer && ent.hp < ent.maxHp){
+    const w = 16;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(Math.round(sx - w / 2 - 1), Math.round(sy - 17 - bob - 1), w + 2, 4);
+    ctx.fillStyle = '#d33';
+    ctx.fillRect(Math.round(sx - w / 2), Math.round(sy - 17 - bob), w * Math.max(0, ent.hp / ent.maxHp), 2);
+  }
+}
+
+function drawFriendly(f, time){
+  const s = toScreen(f.x, f.y);
+  const sx = s.x - camX, sy = s.y - camY;
+  const bob = Math.sin(time * 0.006 + f.seed) * 1.5;
+  // 阴影
+  ctx.fillStyle = 'rgba(0,0,0,.30)';
+  ctx.beginPath();
+  ctx.ellipse(sx, sy + 3, 5.5, 2.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  const R = Math.round;
+  switch (f.kind){
+    case 'chicken': { // 鸡：白身 + 红冠 + 橙喙
+      ctx.fillStyle = '#f4f4f4';
+      ctx.fillRect(R(sx - 5), R(sy - 9 - bob), 10, 8);
+      ctx.fillRect(R(sx - 3), R(sy - 11 - bob), 6, 3);
+      ctx.fillStyle = '#ff8a3a';
+      ctx.fillRect(R(sx + 3), R(sy - 10 - bob), 2, 1);
+      ctx.fillStyle = '#e33';
+      ctx.fillRect(R(sx - 1), R(sy - 12 - bob), 2, 1);
+      ctx.fillStyle = '#d9a24a';
+      ctx.fillRect(R(sx - 6), R(sy - 1 - bob), 2, 3);
+      ctx.fillRect(R(sx + 4), R(sy - 1 - bob), 2, 3);
+      break;
+    }
+    case 'sheep': { // 羊：蓬松白身 + 黑眼
+      ctx.fillStyle = '#e8e8ea';
+      ctx.fillRect(R(sx - 6), R(sy - 8 - bob), 12, 7);
+      ctx.fillStyle = '#c8c8cc';
+      ctx.fillRect(R(sx - 3), R(sy - 10 - bob), 6, 4);
+      ctx.fillStyle = '#333';
+      ctx.fillRect(R(sx - 1), R(sy - 9 - bob), 1, 1);
+      ctx.fillRect(R(sx + 2), R(sy - 9 - bob), 1, 1);
+      ctx.fillStyle = '#888';
+      ctx.fillRect(R(sx - 6), R(sy - 1 - bob), 2, 3);
+      ctx.fillRect(R(sx + 4), R(sy - 1 - bob), 2, 3);
+      break;
+    }
+    case 'cow': { // 牛：棕身白斑 + 角
+      ctx.fillStyle = '#7a4a30';
+      ctx.fillRect(R(sx - 6), R(sy - 8 - bob), 12, 7);
+      ctx.fillStyle = '#efe6d8';
+      ctx.fillRect(R(sx - 2), R(sy - 7 - bob), 4, 3);
+      ctx.fillRect(R(sx - 3), R(sy - 10 - bob), 6, 4);
+      ctx.fillStyle = '#333';
+      ctx.fillRect(R(sx - 1), R(sy - 9 - bob), 1, 1);
+      ctx.fillRect(R(sx + 2), R(sy - 9 - bob), 1, 1);
+      ctx.fillStyle = '#d8c8a8';
+      ctx.fillRect(R(sx - 4), R(sy - 11 - bob), 1, 2);
+      ctx.fillRect(R(sx + 3), R(sy - 11 - bob), 1, 2);
+      break;
+    }
+    case 'pig': { // 猪：粉身 + 大鼻子
+      ctx.fillStyle = '#f0a8b8';
+      ctx.fillRect(R(sx - 5), R(sy - 8 - bob), 10, 7);
+      ctx.fillStyle = '#e88aa0';
+      ctx.fillRect(R(sx - 3), R(sy - 10 - bob), 6, 4);
+      ctx.fillStyle = '#c46a80';
+      ctx.fillRect(R(sx - 2), R(sy - 9 - bob), 3, 2);
+      ctx.fillStyle = '#333';
+      ctx.fillRect(R(sx - 1), R(sy - 10 - bob), 1, 1);
+      ctx.fillRect(R(sx + 2), R(sy - 10 - bob), 1, 1);
+      ctx.fillStyle = '#e88aa0';
+      ctx.fillRect(R(sx - 6), R(sy - 1 - bob), 2, 3);
+      ctx.fillRect(R(sx + 4), R(sy - 1 - bob), 2, 3);
+      break;
+    }
+    case 'rabbit': { // 兔：灰身长耳
+      ctx.fillStyle = '#b8b8c4';
+      ctx.fillRect(R(sx - 4), R(sy - 6 - bob), 8, 5);
+      ctx.fillStyle = '#d0d0da';
+      ctx.fillRect(R(sx - 2), R(sy - 8 - bob), 5, 3);
+      ctx.fillStyle = '#b8b8c4';
+      ctx.fillRect(R(sx - 3), R(sy - 11 - bob), 2, 4);
+      ctx.fillRect(R(sx + 1), R(sy - 11 - bob), 2, 4);
+      ctx.fillStyle = '#e88aa0';
+      ctx.fillRect(R(sx - 3), R(sy - 10 - bob), 1, 2);
+      ctx.fillRect(R(sx + 1), R(sy - 10 - bob), 1, 2);
+      ctx.fillStyle = '#333';
+      ctx.fillRect(R(sx - 1), R(sy - 7 - bob), 1, 1);
+      ctx.fillRect(R(sx + 2), R(sy - 7 - bob), 1, 1);
+      ctx.fillStyle = '#b8b8c4';
+      ctx.fillRect(R(sx - 4), R(sy - 1 - bob), 2, 2);
+      ctx.fillRect(R(sx + 2), R(sy - 1 - bob), 2, 2);
+      break;
+    }
+    case 'duck': { // 鸭：黄身 + 橙扁嘴
+      ctx.fillStyle = '#f2d94a';
+      ctx.fillRect(R(sx - 5), R(sy - 7 - bob), 10, 6);
+      ctx.fillRect(R(sx - 3), R(sy - 9 - bob), 6, 3);
+      ctx.fillStyle = '#ff8a3a';
+      ctx.fillRect(R(sx + 3), R(sy - 8 - bob), 3, 2);
+      ctx.fillStyle = '#333';
+      ctx.fillRect(R(sx - 1), R(sy - 8 - bob), 1, 1);
+      ctx.fillRect(R(sx + 1), R(sy - 8 - bob), 1, 1);
+      ctx.fillStyle = '#d9a24a';
+      ctx.fillRect(R(sx - 6), R(sy - 1 - bob), 2, 3);
+      ctx.fillRect(R(sx + 4), R(sy - 1 - bob), 2, 3);
+      break;
+    }
+    case 'deer': { // 鹿：棕身 + 斑点 + 角
+      ctx.fillStyle = '#c8905a';
+      ctx.fillRect(R(sx - 6), R(sy - 9 - bob), 12, 8);
+      ctx.fillStyle = '#a8703e';
+      ctx.fillRect(R(sx - 3), R(sy - 11 - bob), 6, 4);
+      ctx.fillStyle = '#efe0cc';
+      ctx.fillRect(R(sx - 3), R(sy - 8 - bob), 2, 2);
+      ctx.fillRect(R(sx + 2), R(sy - 6 - bob), 2, 2);
+      ctx.fillStyle = '#e8d8b8';
+      ctx.fillRect(R(sx - 4), R(sy - 13 - bob), 1, 3);
+      ctx.fillRect(R(sx + 3), R(sy - 13 - bob), 1, 3);
+      ctx.fillStyle = '#333';
+      ctx.fillRect(R(sx - 1), R(sy - 10 - bob), 1, 1);
+      ctx.fillRect(R(sx + 2), R(sy - 10 - bob), 1, 1);
+      ctx.fillStyle = '#a8703e';
+      ctx.fillRect(R(sx - 6), R(sy - 2 - bob), 2, 3);
+      ctx.fillRect(R(sx + 4), R(sy - 2 - bob), 2, 3);
+      break;
+    }
+    case 'fox': { // 狐：橙身 + 白尾尖 + 黑耳
+      ctx.fillStyle = '#e07a3a';
+      ctx.fillRect(R(sx - 6), R(sy - 8 - bob), 12, 7);
+      ctx.fillStyle = '#c05a20';
+      ctx.fillRect(R(sx - 3), R(sy - 10 - bob), 6, 4);
+      ctx.fillStyle = '#333';
+      ctx.fillRect(R(sx - 4), R(sy - 11 - bob), 2, 2);
+      ctx.fillRect(R(sx + 2), R(sy - 11 - bob), 2, 2);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(R(sx + 5), R(sy - 3 - bob), 3, 3);
+      ctx.fillStyle = '#333';
+      ctx.fillRect(R(sx - 1), R(sy - 9 - bob), 1, 1);
+      ctx.fillRect(R(sx + 2), R(sy - 9 - bob), 1, 1);
+      ctx.fillStyle = '#c05a20';
+      ctx.fillRect(R(sx - 6), R(sy - 1 - bob), 2, 3);
+      ctx.fillRect(R(sx + 4), R(sy - 1 - bob), 2, 3);
+      break;
+    }
+    case 'squirrel': { // 松鼠：棕身 + 大尾巴
+      ctx.fillStyle = '#a86a3a';
+      ctx.fillRect(R(sx - 3), R(sy - 7 - bob), 7, 6);
+      ctx.fillRect(R(sx - 1), R(sy - 9 - bob), 5, 3);
+      ctx.fillStyle = '#8a5228';
+      ctx.fillRect(R(sx + 5), R(sy - 6 - bob), 4, 5);
+      ctx.fillRect(R(sx + 3), R(sy - 8 - bob), 3, 3);
+      ctx.fillStyle = '#e8c896';
+      ctx.fillRect(R(sx + 5), R(sy - 4 - bob), 4, 2);
+      ctx.fillStyle = '#333';
+      ctx.fillRect(R(sx), R(sy - 8 - bob), 1, 1);
+      ctx.fillRect(R(sx + 2), R(sy - 8 - bob), 1, 1);
+      ctx.fillStyle = '#8a5228';
+      ctx.fillRect(R(sx - 4), R(sy - 1 - bob), 2, 3);
+      ctx.fillRect(R(sx + 2), R(sy - 1 - bob), 2, 3);
+      break;
+    }
+    case 'cat': { // 猫：灰身 + 尖耳 + 尾巴
+      ctx.fillStyle = '#8a8a94';
+      ctx.fillRect(R(sx - 5), R(sy - 8 - bob), 10, 7);
+      ctx.fillStyle = '#6a6a76';
+      ctx.fillRect(R(sx - 3), R(sy - 10 - bob), 6, 4);
+      ctx.fillStyle = '#8a8a94';
+      ctx.fillRect(R(sx - 4), R(sy - 11 - bob), 2, 2);
+      ctx.fillRect(R(sx + 2), R(sy - 11 - bob), 2, 2);
+      ctx.fillStyle = '#333';
+      ctx.fillRect(R(sx - 1), R(sy - 9 - bob), 1, 1);
+      ctx.fillRect(R(sx + 2), R(sy - 9 - bob), 1, 1);
+      ctx.fillStyle = '#8a8a94';
+      ctx.fillRect(R(sx + 5), R(sy - 4 - bob), 3, 2);
+      ctx.fillRect(R(sx + 6), R(sy - 6 - bob), 2, 2);
+      ctx.fillStyle = '#6a6a76';
+      ctx.fillRect(R(sx - 6), R(sy - 1 - bob), 2, 3);
+      ctx.fillRect(R(sx + 4), R(sy - 1 - bob), 2, 3);
+      break;
+    }
+  }
+  // 受伤时显示绿色血条
+  if (f.hp < f.maxHp){
+    const w = 16;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(R(sx - w / 2 - 1), R(sy - 18 - bob - 1), w + 2, 4);
+    ctx.fillStyle = '#6aff6a';
+    ctx.fillRect(R(sx - w / 2), R(sy - 18 - bob), w * Math.max(0, f.hp / f.maxHp), 2);
+  }
+  // 名字（淡绿色小标签）
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 8px "Courier New", monospace';
+  ctx.fillStyle = 'rgba(0,0,0,.55)';
+  ctx.fillText(f.def.name, sx + 1, sy - 16 - bob + 1);
+  ctx.fillStyle = '#cfe0a0';
+  ctx.fillText(f.def.name, sx, sy - 16 - bob);
+}
+
+function drawBullet(b, ox, oy){
+  const s1 = toScreen(b.x - b.vx * 0.05, b.y - b.vy * 0.05);
+  const s2 = toScreen(b.x, b.y);
+  const color = b.team === 'p' ? '#ffe98a' : '#ff5050';
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 4;
+  ctx.globalAlpha = 0.35;
+  ctx.beginPath(); ctx.moveTo(s1.x + ox, s1.y + oy); ctx.lineTo(s2.x + ox, s2.y + oy); ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(s2.x + ox - b.vx * 0.015, s2.y + oy - b.vy * 0.015); ctx.lineTo(s2.x + ox, s2.y + oy); ctx.stroke();
+}
+
+function drawHUD(ds){
+  ctx.textAlign = 'left';
+  ctx.font = 'bold 13px "Courier New", monospace';
+  const barW = 210, barH = 16;
+  const x0 = 12, y0 = 12;
+  // 生命
+  ctx.fillStyle = 'rgba(0,0,0,.55)';
+  ctx.fillRect(x0 - 2, y0 - 2, barW + 4, barH + 4);
+  ctx.fillStyle = '#5a1a1a';
+  ctx.fillRect(x0, y0, barW, barH);
+  ctx.fillStyle = '#e33';
+  ctx.fillRect(x0, y0, barW * (player.hp / player.maxHp), barH);
+  // 护盾（半透明覆盖）
+  if (player.shield > 0){
+    ctx.fillStyle = 'rgba(70,140,255,.55)';
+    ctx.fillRect(x0, y0, barW * (player.shield / player.maxShield), barH);
+  }
+  ctx.strokeStyle = '#111'; ctx.lineWidth = 2;
+  ctx.strokeRect(x0, y0, barW, barH);
+  ctx.fillStyle = '#fff';
+  ctx.fillText(player.hp + '/' + player.maxHp, x0 + barW / 2 - 24, y0 + 13);
+  // 能量
+  const y1 = y0 + barH + 6;
+  ctx.fillStyle = 'rgba(0,0,0,.55)';
+  ctx.fillRect(x0 - 2, y1 - 2, barW + 4, 12 + 4);
+  ctx.fillStyle = '#4a3a10';
+  ctx.fillRect(x0, y1, barW, 12);
+  ctx.fillStyle = '#ffd94a';
+  ctx.fillRect(x0, y1, barW * (player.energy / player.maxEnergy), 12);
+  ctx.strokeRect(x0, y1, barW, 12);
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 10px "Courier New", monospace';
+  ctx.fillText('能量 ' + Math.floor(player.energy), x0 + 4, y1 + 10);
+
+  // 右上角：模式 / 天数·时段 / 坐标
+  ctx.textAlign = 'right';
+  ctx.font = 'bold 14px "Courier New", monospace';
+  const modeText = player.mode === 'ranged' ? '⚔ 远程攻击' : '🗡 近战攻击';
+  ctx.fillStyle = 'rgba(0,0,0,.6)';
+  ctx.fillRect(view.w - 178, 10, 166, 66);
+  ctx.strokeStyle = '#111'; ctx.lineWidth = 2;
+  ctx.strokeRect(view.w - 178, 10, 166, 66);
+  ctx.fillStyle = player.mode === 'ranged' ? '#ffe98a' : '#ff9a6a';
+  ctx.fillText(modeText, view.w - 16, 28);
+  ctx.fillStyle = ds.name === '夜晚' ? '#8ab0ff' : '#cfe0ff';
+  ctx.font = 'bold 12px "Courier New", monospace';
+  ctx.fillText('第 ' + (runDay + 1) + ' 天 · ' + ds.name, view.w - 16, 47);
+  ctx.fillStyle = '#9fb0c8';
+  ctx.fillText('坐标 ' + Math.floor(player.x / CELL) + ', ' + Math.floor(player.y / CELL), view.w - 16, 66);
+  ctx.textAlign = 'left';
+
+  // 小地图（右下）
+  if (settings.minimap){
+    ctx.fillStyle = 'rgba(6,10,18,.72)';
+    ctx.fillRect(view.w - 164, view.h - 164, 164, 164);
+    ctx.drawImage(minimapCvs, view.w - 157, view.h - 157);
+    ctx.strokeStyle = '#111'; ctx.lineWidth = 2;
+    ctx.strokeRect(view.w - 157, view.h - 157, 150, 150);
+    ctx.fillStyle = '#5eff8a';
+    ctx.font = 'bold 9px "Courier New", monospace';
+    ctx.fillText('MAP', view.w - 151, view.h - 146);
+  }
+}
+
+// ---------- 成就系统 ----------
+const ACHIEVEMENTS = [
+  { id:'first_blood', name:'初来乍到', desc:'第一次进入世界', icon:'🌱' },
+  { id:'first_kill', name:'首杀', desc:'击杀第一只怪物', icon:'⚔️' },
+  { id:'kill_10', name:'锋芒初露', desc:'累计击杀 10 只怪物', icon:'🗡️' },
+  { id:'kill_50', name:'屠戮机器', desc:'累计击杀 50 只怪物', icon:'💀' },
+  { id:'kill_200', name:'死神降临', desc:'累计击杀 200 只怪物', icon:'☠️' },
+  { id:'day_1', name:'暗夜求生', desc:'存活 1 天', icon:'🌙' },
+  { id:'day_7', name:'一周目', desc:'存活 7 天', icon:'📅' },
+  { id:'day_30', name:'生存大师', desc:'存活 30 天', icon:'🏆' },
+  { id:'travel_1w', name:'旅行者', desc:'累计移动 10000 像素', icon:'👣' },
+  { id:'travel_10w', name:'探险家', desc:'累计移动 100000 像素', icon:'🧭' },
+  { id:'explore_3k', name:'远方', desc:'离出生点超过 3000 像素', icon:'🌄' },
+  { id:'melee_10', name:'近战专家', desc:'近战击杀 10 只怪物', icon:'🤺' },
+  { id:'ranged_50', name:'神射手', desc:'远程击杀 50 只怪物', icon:'🎯' },
+  { id:'shield_break', name:'破盾者', desc:'击破 20 面护盾', icon:'🛡️' },
+  { id:'night_kill', name:'夜行者', desc:'夜晚击杀 5 只怪物', icon:'🌃' }
+];
+const stats = { games:0, kills:0, rangedKills:0, meleeKills:0, shieldBreaks:0, nightKills:0, dist:0, maxDist:0, days:0 };
+let achieved = new Set();
+let saveT = 15, autoSaveT = 10;
+let runDay = 0;                      // 当前这局存活天数（死亡/重开时归零，不继承上一局）
+function loadStats(){
+  try{
+    const s = JSON.parse(localStorage.getItem('wuti_stats') || '{}');
+    for (const k in stats) if (typeof s[k] === 'number') stats[k] = s[k];
+    if (Array.isArray(s.achieved)) achieved = new Set(s.achieved);
+  }catch(e){}
+}
+function saveStats(){
+  try{
+    localStorage.setItem('wuti_stats', JSON.stringify(Object.assign({}, stats, { achieved: [...achieved] })));
+  }catch(e){}
+}
+function progressOf(a){
+  const s = stats;
+  switch (a.id){
+    case 'first_blood': return s.games >= 1 ? 1 : 0;
+    case 'first_kill': return s.kills >= 1 ? 1 : 0;
+    case 'kill_10': return s.kills / 10;
+    case 'kill_50': return s.kills / 50;
+    case 'kill_200': return s.kills / 200;
+    case 'day_1': return s.days / 1;
+    case 'day_7': return s.days / 7;
+    case 'day_30': return s.days / 30;
+    case 'travel_1w': return s.dist / 10000;
+    case 'travel_10w': return s.dist / 100000;
+    case 'explore_3k': return s.maxDist / 3000;
+    case 'melee_10': return s.meleeKills / 10;
+    case 'ranged_50': return s.rangedKills / 50;
+    case 'shield_break': return s.shieldBreaks / 20;
+    case 'night_kill': return s.nightKills / 5;
+  }
+  return 0;
+}
+function checkAchievements(){
+  let any = false;
+  for (const a of ACHIEVEMENTS){
+    if (!achieved.has(a.id) && progressOf(a) >= 1){
+      achieved.add(a.id);
+      toast('🏆 成就解锁：' + a.name + ' ' + a.icon);
+      SFX.heal();
+      any = true;
+    }
+  }
+  if (any) saveStats();
+}
+function timesCompleted(a){
+  const s = stats;
+  switch (a.id){
+    case 'first_blood': return s.games;
+    case 'first_kill': return s.kills >= 1 ? 1 : 0;
+    case 'kill_10': return Math.floor(s.kills / 10);
+    case 'kill_50': return Math.floor(s.kills / 50);
+    case 'kill_200': return Math.floor(s.kills / 200);
+    case 'day_1': return Math.floor(s.days / 1);
+    case 'day_7': return Math.floor(s.days / 7);
+    case 'day_30': return Math.floor(s.days / 30);
+    case 'travel_1w': return Math.floor(s.dist / 10000);
+    case 'travel_10w': return Math.floor(s.dist / 100000);
+    case 'explore_3k': return Math.floor(s.maxDist / 3000);
+    case 'melee_10': return Math.floor(s.meleeKills / 10);
+    case 'ranged_50': return Math.floor(s.rangedKills / 50);
+    case 'shield_break': return Math.floor(s.shieldBreaks / 20);
+    case 'night_kill': return Math.floor(s.nightKills / 5);
+  }
+  return 0;
+}
+let achieveCountMode = false;
+function renderAchieveList(countMode){
+  achieveCountMode = !!countMode;
+  const el = document.getElementById('achieveList');
+  const note = document.getElementById('achieveModeNote');
+  note.textContent = countMode ? '（主菜单模式：显示各项成就的完成次数）' : '';
+  let h = '';
+  for (const a of ACHIEVEMENTS){
+    if (countMode){
+      const n = timesCompleted(a);
+      h += '<div class="ach-item' + (n > 0 ? ' got' : '') + '"><span class="ach-icon">' + a.icon + '</span>' +
+        '<span class="ach-name">' + a.name + '</span><span class="ach-desc">' + a.desc + '</span>' +
+        '<span class="ach-prog">' + (n > 0 ? '✓ 完成 ' + n + ' 次' : '未完成') + '</span></div>';
+    } else {
+      const got = achieved.has(a.id);
+      const prog = Math.min(100, Math.round(progressOf(a) * 100));
+      h += '<div class="ach-item' + (got ? ' got' : '') + '"><span class="ach-icon">' + a.icon + '</span>' +
+        '<span class="ach-name">' + a.name + '</span><span class="ach-desc">' + a.desc + '</span>' +
+        '<span class="ach-prog">' + (got ? '✓ 已解锁' : prog + '%') + '</span></div>';
+    }
+  }
+  el.innerHTML = h;
+}
+
+// ---------- 小地图 ----------
+const minimapCvs = document.createElement('canvas');
+minimapCvs.width = 150; minimapCvs.height = 150;
+const MM_COLORS = ['#3d7a3d','#2a5f33','#7d8a3f','#c4b077','#2f66b8','#6e6e78','#0a0f18'];
+let minimapT = 0;
+function drawMinimapCache(){
+  const mm = 150, half = 75;
+  const mctx = minimapCvs.getContext('2d');
+  const pcx = Math.floor(player.x / CELL), pcy = Math.floor(player.y / CELL);
+  mctx.fillStyle = '#0a0f18';
+  mctx.fillRect(0, 0, mm, mm);
+  for (let dy = -half; dy <= half; dy++){
+    for (let dx = -half; dx <= half; dx++){
+      const i = pcx + dx, j = pcy + dy;
+      if (worldLimit > 0 && (i < 0 || j < 0 || i >= worldLimit || j >= worldLimit)) continue;
+      mctx.fillStyle = MM_COLORS[tileType(i, j)];
+      mctx.fillRect(dx + half, dy + half, 1, 1);
+    }
+  }
+  for (const e of enemies){
+    const dx = Math.floor(e.x / CELL) - pcx, dy = Math.floor(e.y / CELL) - pcy;
+    if (dx >= -half && dx <= half && dy >= -half && dy <= half){
+      mctx.fillStyle = '#ff5050';
+      mctx.fillRect(dx + half, dy + half, 1, 1);
+    }
+  }
+  for (const f of friendlies){
+    const dx = Math.floor(f.x / CELL) - pcx, dy = Math.floor(f.y / CELL) - pcy;
+    if (dx >= -half && dx <= half && dy >= -half && dy <= half){
+      mctx.fillStyle = '#8aff8a';
+      mctx.fillRect(dx + half, dy + half, 1, 1);
+    }
+  }
+  mctx.fillStyle = '#ffffff';
+  mctx.fillRect(half - 1, half - 1, 3, 3);
+}
+
+// ---------- Toast ----------
+let toastTimer = null;
+const toastEl = document.getElementById('toast');
+function toast(msg){
+  toastEl.textContent = msg;
+  toastEl.style.opacity = 1;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toastEl.style.opacity = 0; }, 1400);
+}
+
+// ---------- 界面控制 ----------
+let overlayStack = []; // 叠加层栈，如 ['pause','settings']
+function showOverlay(id){
+  for (const o of ['menu','settings','about','achieve','death','pause','tutorial']) {
+    document.getElementById(o).classList.toggle('hidden', o !== id);
+  }
+}
+function hideOverlays(){
+  for (const o of ['menu','settings','about','achieve','death','pause','tutorial']) {
+    document.getElementById(o).classList.add('hidden');
+  }
+}
+function openOverlay(id){ overlayStack.push(id); showOverlay(id); }
+function closeOverlay(){
+  overlayStack.pop();
+  const prev = overlayStack[overlayStack.length - 1];
+  showOverlay(prev === undefined ? 'menu' : prev);
+}
+function goMenu(){ overlayStack = []; showOverlay('menu'); }
+function updateMenuButtons(){
+  document.getElementById('btnContinue').style.display = hasSave() ? '' : 'none';
+}
+function updatePauseStats(){
+  const day = document.getElementById('psDay');
+  if (!day) return;
+  day.textContent = runDay + 1;
+  document.getElementById('psPhase').textContent = dayState().name;
+  document.getElementById('psKills').textContent = stats.kills;
+  document.getElementById('psHp').textContent = Math.floor(player.hp) + '/' + player.maxHp;
+}
+
+// ---------- 存档机制 ----------
+const SAVE_KEY = 'wuti_save';
+function saveGame(){
+  if (gameState !== 'playing' && gameState !== 'paused') return;
+  try {
+    const data = {
+      v: 3, savedAt: Date.now(), worldSize: settings.worldSize,
+      player: { x: player.x, y: player.y, hp: player.hp, shield: player.shield, energy: player.energy, mode: player.mode, spawnX: player.spawnX, spawnY: player.spawnY },
+      dayT, monsterSpawnT, runDay,
+      enemies: enemies.map(e => ({ kind: e.kind, x: e.x, y: e.y, hp: e.hp, shield: e.shield })),
+      friendlies: friendlies.map(f => ({ kind: f.kind, x: f.x, y: f.y }))
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+  } catch(e){}
+}
+function hasSave(){
+  try { return !!localStorage.getItem(SAVE_KEY); } catch(e){ return false; }
+}
+function deleteSave(){
+  try { localStorage.removeItem(SAVE_KEY); } catch(e){}
+}
+function loadGame(){
+  try {
+    const data = JSON.parse(localStorage.getItem(SAVE_KEY));
+    if (!data || !data.player) return false;
+    chunks.clear();
+    chunkCvs.clear();
+    settings.worldSize = data.worldSize || settings.worldSize;
+    worldLimit = WORLD_SIZES[settings.worldSize] || 0;
+    refreshDiff();
+    bindSetting();          // 同步设置面板显示
+    resetPlayer();
+    player.x = data.player.x; player.y = data.player.y;
+    player.hp = Math.min(data.player.hp, player.maxHp); player.shield = Math.min(data.player.shield, player.maxShield);
+    player.energy = data.player.energy; player.mode = data.player.mode || 'ranged';
+    player.spawnX = data.player.spawnX || player.x; player.spawnY = data.player.spawnY || player.y;
+    dayT = data.dayT || 0; monsterSpawnT = data.monsterSpawnT || 0; runDay = data.runDay || 0;
+    enemies = (data.enemies || []).map(e => {
+      const en = makeEnemy(e.kind, e.x, e.y);
+      en.hp = e.hp; en.shield = e.shield || 0;
+      en.maxHp = Math.max(en.hp, en.maxHp);
+      return en;
+    });
+    friendlies = (data.friendlies || []).map(f => makeFriendly(f.kind, f.x, f.y));
+    bullets = []; particles = []; floats = [];
+    camX = 0; camY = 0; shake = 0;
+    updateChunks();
+    updateCamera(0.1);
+    gameState = 'playing';
+    overlayStack = [];
+    hideOverlays();
+    toast('存档已加载，继续冒险！');
+    return true;
+  } catch(e){ return false; }
+}
+
+function getSpawnInterval(){
+  return Math.max(1, (settings.monsterSpawnInterval || 4) * (diffMul.spawn || 1));
+}
+function resetGame(){
+  chunks.clear();
+  chunkCvs.clear();
+  refreshDiff();
+  worldLimit = WORLD_SIZES[settings.worldSize] || 0;
+  resetPlayer();
+  spawnEnemies();
+  friendlies = [];
+  bullets = []; particles = []; floats = [];
+  dayT = 0; monsterSpawnT = 0; friendlySpawnT = 2;
+  runDay = 0;                     // 本局天数归零（死亡/重开不继承上一局）
+  camX = 0; camY = 0; shake = 0;
+  updateChunks();
+  updateCamera(0.1);
+  // 开局是白天：先在视野内出现几只友好生物
+  for (let k = 0; k < Math.min(6, getFriendlyCap()); k++) spawnFriendlyNearPlayer();
+  gameState = 'playing';
+  overlayStack = [];
+  hideOverlays();
+}
+
+document.getElementById('btnContinue').addEventListener('click', () => {
+  initAudio(); SFX.click();
+  if (!loadGame()){ toast('存档读取失败'); updateMenuButtons(); }
+});
+document.getElementById('btnStart').addEventListener('click', () => {
+  initAudio(); SFX.click();
+  deleteSave();               // 新游戏会覆盖旧存档
+  stats.games++;
+  resetGame();
+  checkAchievements();
+  updateMenuButtons();
+  // 操作指南：每次开局都显示（除非之前在弹窗里勾选过“不再显示”）
+  let tutDone = false;
+  try { tutDone = localStorage.getItem('wuti_tutorial_v2') === '1'; } catch(e){}
+  if (!tutDone){
+    overlayStack = ['tutorial'];
+    showOverlay('tutorial');
+    gameState = 'paused';
+  }
+});
+document.getElementById('btnAchieve').addEventListener('click', () => { SFX.click(); renderAchieveList(true); openOverlay('achieve'); });
+document.getElementById('btnAchieveBack').addEventListener('click', () => { SFX.click(); closeOverlay(); });
+document.getElementById('btnResetStats').addEventListener('click', () => {
+  stats.games = 0; stats.kills = 0; stats.rangedKills = 0; stats.meleeKills = 0;
+  stats.shieldBreaks = 0; stats.nightKills = 0; stats.dist = 0; stats.maxDist = 0; stats.days = 0;
+  achieved = new Set();
+  saveStats();
+  renderAchieveList(achieveCountMode);
+  toast('统计数据已重置');
+});
+document.getElementById('btnSettings').addEventListener('click', () => { SFX.click(); openOverlay('settings'); });
+document.getElementById('btnAbout').addEventListener('click', () => { SFX.click(); openOverlay('about'); });
+document.getElementById('btnSettingsBack').addEventListener('click', () => { SFX.click(); closeOverlay(); });
+document.getElementById('btnAboutBack').addEventListener('click', () => { SFX.click(); closeOverlay(); });
+document.getElementById('btnRespawn').addEventListener('click', () => { SFX.click(); resetGame(); });
+document.getElementById('btnToMenu').addEventListener('click', () => { SFX.click(); goMenu(); gameState = 'menu'; updateMenuButtons(); });
+document.getElementById('btnResume').addEventListener('click', () => { SFX.click(); hideOverlays(); overlayStack = []; gameState = 'playing'; });
+document.getElementById('btnPauseSettings').addEventListener('click', () => { SFX.click(); openOverlay('settings'); });
+document.getElementById('btnPauseAchieve').addEventListener('click', () => { SFX.click(); renderAchieveList(false); openOverlay('achieve'); });
+document.getElementById('btnPauseHelp').addEventListener('click', () => { SFX.click(); openOverlay('tutorial'); });
+document.getElementById('btnPauseSave').addEventListener('click', () => { SFX.click(); saveGame(); toast('已手动存档'); });
+document.getElementById('btnPauseMenu').addEventListener('click', () => {
+  SFX.click();
+  saveGame();
+  goMenu();
+  gameState = 'menu';
+  updateMenuButtons();
+  toast('已保存并返回主菜单');
+});
+document.getElementById('btnTutorialStart').addEventListener('click', () => {
+  SFX.click();
+  try {
+    // 勾选“不再显示”→ 记住；未勾选 → 每次开局都再显示
+    if (document.getElementById('tutNoMore').checked) localStorage.setItem('wuti_tutorial_v2', '1');
+    else localStorage.removeItem('wuti_tutorial_v2');
+  } catch(e){}
+  if (overlayStack.length > 1){ closeOverlay(); }  // 从暂停菜单打开 → 返回暂停
+  else { hideOverlays(); overlayStack = []; gameState = 'playing'; } // 首次进入 → 开始冒险
+});
+
+// 设置控件
+const $ = id => document.getElementById(id);
+function bindSetting(){
+  $('setVolume').value = settings.volume; $('valVolume').textContent = settings.volume;
+  $('setDay').value = settings.dayNightSpeed; $('valDay').textContent = settings.dayNightSpeed;
+  $('setRate').value = settings.fireRate; $('valRate').textContent = settings.fireRate.toFixed(1);
+  $('setPixel').checked = settings.pixel;
+  $('setWorld').value = settings.worldSize;
+  $('setDiff').value = settings.difficulty;
+  $('setMCount').value = settings.monsterCount; $('valMCount').textContent = settings.monsterCount;
+  $('setMHp').value = settings.monsterHp; $('valMHp').textContent = settings.monsterHp.toFixed(1);
+  $('setMDmg').value = settings.monsterDmg; $('valMDmg').textContent = settings.monsterDmg.toFixed(1);
+  $('setMSpd').value = settings.monsterSpeed; $('valMSpd').textContent = settings.monsterSpeed.toFixed(1);
+  $('setSpawn').value = settings.spawnNight ? 'night' : 'immediate';
+  $('setVolume').oninput = e => { settings.volume = +e.target.value; $('valVolume').textContent = settings.volume; if (masterGain) masterGain.gain.value = settings.volume / 100; saveSettings(); };
+  $('setDay').oninput = e => { settings.dayNightSpeed = +e.target.value; $('valDay').textContent = settings.dayNightSpeed; saveSettings(); };
+  $('setRate').oninput = e => { settings.fireRate = +e.target.value; $('valRate').textContent = settings.fireRate.toFixed(1); saveSettings(); };
+  $('setWorld').onchange = e => { settings.worldSize = e.target.value; worldLimit = WORLD_SIZES[settings.worldSize] || 0; saveSettings(); toast('世界大小将在下次开始时生效'); };
+  $('setDiff').onchange = e => { settings.difficulty = e.target.value; refreshDiff(); saveSettings(); toast('难度将在下次开始时生效'); };
+  $('setMCount').oninput = e => { settings.monsterCount = +e.target.value; $('valMCount').textContent = settings.monsterCount; saveSettings(); };
+  $('setMHp').oninput = e => { settings.monsterHp = +e.target.value; $('valMHp').textContent = settings.monsterHp.toFixed(1); saveSettings(); };
+  $('setMDmg').oninput = e => { settings.monsterDmg = +e.target.value; $('valMDmg').textContent = settings.monsterDmg.toFixed(1); saveSettings(); };
+  $('setMSpd').oninput = e => { settings.monsterSpeed = +e.target.value; $('valMSpd').textContent = settings.monsterSpeed.toFixed(1); saveSettings(); };
+  $('setSpawn').onchange = e => { settings.spawnNight = e.target.value === 'night'; saveSettings(); toast('刷新方式将在下次开始时生效'); };
+  $('setPixel').onchange = e => { settings.pixel = e.target.checked; buildSprites(); saveSettings(); };
+  $('setMaxHp').value = settings.playerMaxHp; $('valMaxHp').textContent = settings.playerMaxHp;
+  $('setPSpd').value = settings.playerSpeed; $('valPSpd').textContent = settings.playerSpeed.toFixed(2);
+  $('setMeleeDmg').value = settings.meleeDmg; $('valMeleeDmg').textContent = settings.meleeDmg;
+  $('setMeleeCd').value = settings.meleeCd; $('valMeleeCd').textContent = settings.meleeCd.toFixed(2);
+  $('setLifesteal').value = settings.lifesteal; $('valLifesteal').textContent = settings.lifesteal + '%';
+  $('setFHeal').value = settings.friendlyHeal; $('valFHeal').textContent = settings.friendlyHeal;
+  $('setFSpawn').value = settings.friendlySpawnInterval; $('valFSpawn').textContent = settings.friendlySpawnInterval;
+  $('setSaveT').value = settings.saveInterval; $('valSaveT').textContent = settings.saveInterval;
+  $('setMSpawn').value = settings.monsterSpawnInterval; $('valMSpawn').textContent = settings.monsterSpawnInterval;
+  $('setMinimap').checked = settings.minimap;
+  $('setShake').checked = settings.shake;
+  $('setDmgTxt').checked = settings.dmgTxt;
+  $('setRes').value = settings.renderScale; $('valRes').textContent = settings.renderScale.toFixed(2);
+  $('setCR').value = settings.chunkRadius; $('valCR').textContent = settings.chunkRadius;
+  $('setParticles').value = settings.particles; $('valParticles').textContent = settings.particles + '%';
+  $('setWaves').checked = settings.waterWaves;
+  $('setMaxHp').oninput = e => { settings.playerMaxHp = +e.target.value; $('valMaxHp').textContent = settings.playerMaxHp; player.maxHp = settings.playerMaxHp; if (player.hp > player.maxHp) player.hp = player.maxHp; saveSettings(); };
+  $('setPSpd').oninput = e => { settings.playerSpeed = +e.target.value; $('valPSpd').textContent = settings.playerSpeed.toFixed(2); player.speed = PLAYER_SPEED * settings.playerSpeed; saveSettings(); };
+  $('setMeleeDmg').oninput = e => { settings.meleeDmg = +e.target.value; $('valMeleeDmg').textContent = settings.meleeDmg; saveSettings(); };
+  $('setMeleeCd').oninput = e => { settings.meleeCd = +e.target.value; $('valMeleeCd').textContent = settings.meleeCd.toFixed(2); saveSettings(); };
+  $('setLifesteal').oninput = e => { settings.lifesteal = +e.target.value; $('valLifesteal').textContent = settings.lifesteal + '%'; saveSettings(); };
+  $('setFHeal').oninput = e => { settings.friendlyHeal = +e.target.value; $('valFHeal').textContent = settings.friendlyHeal; saveSettings(); };
+  $('setFSpawn').oninput = e => { settings.friendlySpawnInterval = +e.target.value; $('valFSpawn').textContent = settings.friendlySpawnInterval; saveSettings(); };
+  $('setSaveT').oninput = e => { settings.saveInterval = +e.target.value; $('valSaveT').textContent = settings.saveInterval; autoSaveT = Math.min(autoSaveT, settings.saveInterval); saveSettings(); };
+  $('setMSpawn').oninput = e => { settings.monsterSpawnInterval = +e.target.value; $('valMSpawn').textContent = settings.monsterSpawnInterval; saveSettings(); };
+  $('setMinimap').onchange = e => { settings.minimap = e.target.checked; saveSettings(); };
+  $('setShake').onchange = e => { settings.shake = e.target.checked; saveSettings(); };
+  $('setDmgTxt').onchange = e => { settings.dmgTxt = e.target.checked; saveSettings(); };
+  $('setRes').oninput = e => { settings.renderScale = +e.target.value; $('valRes').textContent = settings.renderScale.toFixed(2); resize(); saveSettings(); };
+  $('setCR').oninput = e => { settings.chunkRadius = +e.target.value; $('valCR').textContent = settings.chunkRadius; saveSettings(); };
+  $('setParticles').oninput = e => { settings.particles = +e.target.value; $('valParticles').textContent = settings.particles + '%'; saveSettings(); };
+  $('setWaves').onchange = e => { settings.waterWaves = e.target.checked; saveSettings(); };
+}
+bindSetting();
+
+// 自定义图片
+function bindFile(inputId, key){
+  $(inputId).addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const url = URL.createObjectURL(f);
+    const img = new Image();
+    img.onload = () => { settings.images[key] = img; URL.revokeObjectURL(url); toast('角色图片已更新'); };
+    img.onerror = () => toast('图片加载失败');
+    img.src = url;
+  });
+}
+bindFile('filePlayer', 'player');
+bindFile('fileE1', '1');
+bindFile('fileE2', '2');
+bindFile('fileE3', '3');
+bindFile('fileE4', '4');
+
+// ---------- 输入 ----------
+canvas.addEventListener('mousedown', e => {
+  if (gameState !== 'playing') return;
+  const rect = canvas.getBoundingClientRect();
+  const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+  if (e.button === 0){
+    const w = toWorld(sx + camX, sy + camY);
+    setTarget(w.x, w.y);
+  } else if (e.button === 2){
+    cancelMove();
+  }
+});
+window.addEventListener('contextmenu', e => e.preventDefault());
+window.addEventListener('keydown', e => {
+  if (e.key === 'Control' || e.key === 'Ctrl'){
+    if (gameState === 'playing'){
+      player.mode = player.mode === 'ranged' ? 'melee' : 'ranged';
+      SFX.click();
+    }
+    e.preventDefault();
+  } else if (e.key === ' '){
+    spaceHeld = true;
+    if (gameState === 'playing' && player.mode === 'melee') doMelee();
+    e.preventDefault();
+  } else if (e.key === 'Escape'){
+    if (gameState === 'playing'){
+      gameState = 'paused';
+      saveGame();               // 暂停时立即存档
+      overlayStack = ['pause'];
+      updatePauseStats();       // 刷新暂停面板统计信息
+      showOverlay('pause');
+    } else if (gameState === 'paused'){
+      if (overlayStack.length > 1){
+        closeOverlay();         // 设置/成就子页 → 返回暂停菜单
+      } else {
+        gameState = 'playing'; hideOverlays(); overlayStack = [];
+      }
+    }
+  }
+});
+window.addEventListener('keyup', e => { if (e.key === ' ') spaceHeld = false; });
+
+// ---------- 主循环 ----------
+function loop(t){
+  const dt = Math.min(0.05, (t - lastTime) / 1000 || 0.016);
+  lastTime = t;
+  if (gameState === 'playing') update(dt);
+  render(t);
+  requestAnimationFrame(loop);
+}
+
+// ---------- 启动 ----------
+resize();
+buildSprites();
+loadStats();
+refreshDiff();
+worldLimit = WORLD_SIZES[settings.worldSize] || 0;
+resetPlayer();
+updateChunks();
+updateMenuButtons();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
