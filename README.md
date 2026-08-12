@@ -19,3 +19,6 @@
 Ctrl：切换远程/近战模式
 空格：近战攻击
 ESC：暂停/存档
+
+## 点击试玩
+[https://renji004.github.io/a-2.5d-game/](https://renji004.github.io/a-2.5d-game/)
